@@ -1,0 +1,209 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  OWNER
+  MANAGER
+  ANALYST
+  DEV
+}
+
+enum ProviderName {
+  openai
+  anthropic
+  google
+  groq
+  mistral
+}
+
+enum Plan {
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(ANALYST)
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@map("users")
+}
+
+model Tenant {
+  id                   String                @id @default(uuid())
+  name                 String
+  slug                 String                @unique
+
+  plan                 Plan                  @default(STARTER)
+
+  isActive             Boolean               @default(true)
+
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  users                User[]
+  apiKeys              ApiKey[]
+  providerCredentials  ProviderCredential[]
+  billingGroups        BillingGroup[]
+  usageLogs            UsageLog[]
+  quota                Quota?
+
+  @@map("tenants")
+}
+
+model ProviderCredential {
+  id          String       @id @default(uuid())
+
+  tenantId    String
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  provider    ProviderName
+
+  apiKey      String
+
+  name        String?
+  description String?
+
+  baseUrl     String?
+
+  isActive    Boolean      @default(true)
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  apiKeys     ApiKey[]
+
+  @@unique([tenantId, provider])
+
+  @@index([tenantId])
+  @@index([provider])
+
+  @@map("provider_credentials")
+}
+
+model Quota {
+  id          String   @id @default(uuid())
+
+  tenantId    String   @unique
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  limit       Int
+  used        Int      @default(0)
+
+  resetAt     DateTime
+  lastResetAt DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("quotas")
+}
+
+model ApiKey {
+  id        String   @id @default(uuid())
+
+  key       String   @unique
+
+  name      String
+
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  provider  ProviderName
+
+  providerCredentialId String
+
+  providerCredential ProviderCredential    @relation(fields: [providerCredentialId], references: [id])
+
+  allowedModels Json?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usageLogs UsageLog[]
+
+  @@unique([tenantId, name])
+
+  @@index([tenantId])
+  @@index([provider])
+
+  @@map("api_keys")
+}
+
+model BillingGroup {
+  id        String     @id @default(uuid())
+  name      String
+  tenantId  String
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  usageLogs UsageLog[]
+
+  @@unique([tenantId, name])
+  @@map("billing_groups")
+}
+
+model UsageLog {
+  id               String        @id @default(uuid())
+
+  tenantId         String
+  tenant           Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  billingGroupId   String?
+  billingGroup     BillingGroup? @relation(fields: [billingGroupId], references: [id], onDelete: SetNull)
+
+  traceId          String?
+  agent            String?
+  project          String?
+  environment      String?
+  externalUserId   String?
+  requestGroup     String?
+  tags             Json?
+  provider         ProviderName
+  model            String
+  promptTokens     Int
+  completionTokens Int
+  totalTokens      Int
+  estimatedCost    Float @default(0)
+  requestId        String?
+  statusCode       Int?
+  success          Boolean @default(true)
+  latencyMs        Int?
+
+  apiKeyId         String?
+
+  apiKey           ApiKey?    @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  createdAt        DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([billingGroupId])
+  @@index([createdAt])
+
+  @@index([traceId])
+  @@index([agent])
+  @@index([project])
+
+  @@index([provider])
+  @@index([model])
+
+  @@index([externalUserId])
+  @@index([requestGroup])
+
+  @@index([apiKeyId])
+
+  @@map("usage_logs")
+}
