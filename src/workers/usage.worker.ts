@@ -139,9 +139,21 @@ const worker = new Worker(
 );
 
 
-worker.on("failed", (job, err) => {
-  console.error("Job falhou:", job?.id);
-  console.error(err);
+worker.on("failed", async (job, err) => {
+
+  if (!job) return;
+
+  await prisma.failedUsage.create({
+    data: {
+      tenantId: job.data.tenantId,
+      requestId: job.data.requestId,
+      traceId: job.data.traceId,
+      payload: job.data,
+      error: err.message,
+      lastAttemptAt: new Date()
+    }
+  });
+
 });
 
 process.on("SIGINT", async () => {

@@ -54,7 +54,8 @@ export class CollectorController {
 
         apiKeyId,
 
-        
+        traceId:
+          body.traceId ?? randomUUID(),
         requestId:
           body.requestId ?? randomUUID(),
 
@@ -115,8 +116,7 @@ export class CollectorController {
           body.metadata?.tags ?? [],
 
 
-        traceId:
-          body.metadata?.traceId ?? null
+
       };
 
 console.dir(event, { depth: null });

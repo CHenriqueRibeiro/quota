@@ -8,6 +8,7 @@ import { userRoutes } from './src/routes/user.routes';
 import { proxyRoutes } from './src/routes/proxy.routes';
 import { collectorRoutes } from './src/routes/collector.routes';
 import { billingRoutes } from './src/routes/billing.routes';
+import { failedUsageRoutes } from './src/routes/failedUsage.routes';
 
 const prisma = new PrismaClient();
 
@@ -22,6 +23,7 @@ server.register(userRoutes);
 server.register(proxyRoutes);
 server.register(collectorRoutes);
 server.register(billingRoutes);
+server.register(failedUsageRoutes);
 
 const start = async () => {
   try {
