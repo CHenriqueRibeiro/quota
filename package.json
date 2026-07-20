@@ -3,25 +3,22 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
-
   "scripts": {
     "start": "bun index.ts",
     "worker": "bun src/workers/usage.worker.ts",
     "dev": "bun --watch index.ts"
   },
-
   "devDependencies": {
     "@types/argon2": "^0.15.4",
     "@types/bun": "latest",
     "@types/jsonwebtoken": "^9.0.10",
     "prisma": "6.15.0"
   },
-
   "peerDependencies": {
     "typescript": "^5"
   },
-
   "dependencies": {
+    "@fastify/cors": "^11.3.0",
     "@prisma/client": "6.15.0",
     "argon2": "^0.44.0",
     "bullmq": "^5.80.2",

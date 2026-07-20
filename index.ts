@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import cors from '@fastify/cors';
 import Fastify from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import { redis } from './src/lib/redis';
@@ -18,26 +19,44 @@ const server = Fastify({
   bodyLimit: 20 * 1024 * 1024,
 });
 
-server.register(tenantRoutes);
-server.register(authRoutes);
-server.register(userRoutes);
-server.register(proxyRoutes);
-server.register(collectorRoutes);
-server.register(billingRoutes);
-server.register(failedUsageRoutes);
-server.register(analyticsRoutes);
-
 const start = async () => {
   try {
     const port = Number(process.env.PORT) || 3000;
-    
+
+    // Plugins
+    await server.register(cors, {
+      origin: [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+      ],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      credentials: true,
+    });
+
+    // Rotas
+    await server.register(tenantRoutes);
+    await server.register(authRoutes);
+    await server.register(userRoutes);
+    await server.register(proxyRoutes);
+    await server.register(collectorRoutes);
+    await server.register(billingRoutes);
+    await server.register(failedUsageRoutes);
+    await server.register(analyticsRoutes);
+
+    // Banco
     await prisma.$connect();
     server.log.info('🚀 Conexão com o PostgreSQL via Prisma estabelecida com sucesso.');
 
+    // Redis
     const redisStatus = await redis.ping();
-    server.log.info(`Redis status: ${redisStatus}`); 
+    server.log.info(`Redis status: ${redisStatus}`);
 
-    await server.listen({ port: port, host: '0.0.0.0' });
+    // Servidor
+    await server.listen({
+      port,
+      host: '0.0.0.0',
+    });
+
     console.log(`\n🔥 Quota rodando em alta performance na porta ${port}\n`);
   } catch (err) {
     server.log.error(err);
@@ -47,9 +66,11 @@ const start = async () => {
 
 const gracefulShutdown = async (signal: string) => {
   server.log.info(`Received ${signal}, shutting down gracefully...`);
+
   try {
     await server.close();
     await prisma.$disconnect();
+
     try {
       await (redis as any).quit();
     } catch {
@@ -57,6 +78,7 @@ const gracefulShutdown = async (signal: string) => {
         (redis as any).disconnect();
       } catch {}
     }
+
     process.exit(0);
   } catch (err) {
     server.log.error(err);
