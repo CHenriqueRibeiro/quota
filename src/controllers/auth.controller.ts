@@ -8,25 +8,45 @@ const prisma = new PrismaClient();
 
 export class AuthController {
   async login(request: FastifyRequest, reply: FastifyReply) {
-    try {
-      const { email, password } = request.body as { email: string; password: string };
+  try {
+    const { email, password } = request.body as { 
+      email: string; 
+      password: string 
+    };
 
-      const user = await prisma.user.findUnique({ where: { email } });
-      if (!user || !(await argon2.verify(user.passwordHash, password))) {
-        return reply.status(401).send({ error: 'Invalid credentials' });
-      }
+    const user = await prisma.user.findUnique({ 
+      where: { email } 
+    });
 
-      const token = jwt.sign(
-        { id: user.id, role: user.role, tenantId: user.tenantId },
-        process.env.JWT_SECRET as string,
-        { expiresIn: '8h' }
-      );
-
-      return reply.send({ token });
-    } catch (error) {
-      return reply.status(500).send({ error: 'Internal server error' });
+    if (!user || !(await argon2.verify(user.passwordHash, password))) {
+      return reply.status(401).send({ 
+        error: 'Invalid credentials' 
+      });
     }
+
+    const token = jwt.sign(
+      { 
+        id: user.id, 
+        role: user.role, 
+        tenantId: user.tenantId 
+      },
+      process.env.JWT_SECRET as string,
+      { 
+        expiresIn: '8h' 
+      }
+    );
+
+    return reply.send({
+      token,
+      user: { id: user.id, role: user.role, tenantId: user.tenantId }
+    });
+
+  } catch (error) {
+    return reply.status(500).send({ 
+      error: 'Internal server error' 
+    });
   }
+}
 
   async logout(request: FastifyRequest, reply: FastifyReply) {
     const authRequest = request as AuthenticatedRequest;
