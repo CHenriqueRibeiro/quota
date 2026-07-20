@@ -7,6 +7,10 @@
     "jsx": "react-jsx",
     "allowJs": true,
     "types": ["bun"],
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/@types"
+    ],
 
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
@@ -22,5 +26,10 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
-  }
+  },
+
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts"
+  ]
 }

@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import type { FastifyReply } from 'fastify';
-import type { AuthenticatedRequest, UserRole } from '../types/auth';
+import type { UserRole } from '../types/auth';
+import type { FastifyRequest } from 'fastify';
 
 const roleHierarchy: Record<UserRole, number> = {
   OWNER: 4,
@@ -13,7 +14,7 @@ const isValidRole = (value: unknown): value is UserRole => {
   return typeof value === 'string' && value in roleHierarchy;
 };
 
-export const authenticate = async (request: AuthenticatedRequest, reply: FastifyReply) => {
+export const authenticate = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const systemSecret = process.env.SYSTEM_OWNER_SECRET;
     const systemSecretHeader = request.headers['x-system-secret'];
@@ -62,7 +63,7 @@ export const authenticate = async (request: AuthenticatedRequest, reply: Fastify
 };
 
 export const authorize = (requiredRole: UserRole) => {
-  return async (request: AuthenticatedRequest, reply: FastifyReply) => {
+  return async (request: FastifyRequest, reply: FastifyReply) => {
 
     const user = request.user;
     const userRole = user?.role;
