@@ -7,6 +7,28 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum NotificationChannel {
+  EMAIL
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum AlertType {
+  COST
+  TOKENS
+  LATENCY
+  ERRORS
+}
+
+enum AlertPeriod {
+  REQUEST
+  DAILY
+  MONTHLY
+}
 enum Role {
   OWNER
   MANAGER
@@ -59,6 +81,8 @@ model Tenant {
   billingGroups       BillingGroup[]
   usageLogs           UsageLog[]
   failedUsages        FailedUsage[]
+  alertConfigs AlertConfig[]
+  notifications Notification[]
   quota               Quota?
 
   @@map("tenants")
@@ -148,7 +172,8 @@ model BillingGroup {
   tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt DateTime   @default(now())
   usageLogs UsageLog[]
-
+  alertConfigs AlertConfig[]
+  
   @@unique([tenantId, name])
   @@map("billing_groups")
 }
@@ -227,4 +252,82 @@ model FailedUsage {
   @@index([status])
   @@index([requestId])
   @@map("failed_usage")
+}
+
+model AlertConfig {
+
+  id String @id @default(uuid())
+
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  enabled Boolean @default(true)
+
+  type AlertType
+
+  period AlertPeriod
+
+  threshold Float
+
+  email String
+
+  provider ProviderName?
+
+  model String?
+
+  billingGroupId String?
+  billingGroup BillingGroup? @relation(fields: [billingGroupId], references: [id], onDelete: SetNull)
+
+  project String?
+
+  agent String?
+
+  lastTriggeredAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notifications Notification[]
+
+  @@index([tenantId])
+  @@index([enabled])
+  @@index([type])
+  @@index([provider])
+  @@index([project])
+  @@index([agent])
+  @@index([billingGroupId])
+@@index([model])
+}
+
+model Notification {
+
+  id String @id @default(uuid())
+
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  alertConfigId String
+  alertConfig AlertConfig @relation(fields: [alertConfigId], references: [id], onDelete: Cascade)
+
+  title String
+
+  message String
+
+  channel NotificationChannel
+
+  error String?
+
+  status NotificationStatus @default(PENDING)
+
+  sentAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+
+@@index([status])
+@@index([tenantId, status])
+@@index([createdAt])
+@@index([alertConfigId])
 }

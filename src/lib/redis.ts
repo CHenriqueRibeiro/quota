@@ -18,9 +18,9 @@ const redis = new Redis(redisUrl, {
   }
 });
 
-redis.on('connect', () => console.info('✅ Redis connected successfully!'));
-redis.on('error', (err: Error) => console.error('❌ Redis connection error:', err));
-redis.on('ready', () => console.info('🚀 Redis is ready to use!'));
+redis.on('connect', () => console.info('Redis connected successfully!'));
+redis.on('error', (err: Error) => console.error('Redis connection error:', err));
+redis.on('ready', () => console.info('Redis is ready to use!'));
 
 redis.ping().then((result: PingResult) => console.info('Ping Result:', result)).catch((err: Error) => console.error('Ping Error:', err));
 

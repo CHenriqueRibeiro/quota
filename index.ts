@@ -11,6 +11,7 @@ import { collectorRoutes } from './src/routes/collector.routes';
 import { billingRoutes } from './src/routes/billing.routes';
 import { failedUsageRoutes } from './src/routes/failedUsage.routes';
 import { analyticsRoutes } from './src/routes/analytics.routes';
+import { alertRoutes } from './src/routes/alert.routes';
 
 const prisma = new PrismaClient();
 
@@ -22,18 +23,11 @@ const server = Fastify({
 const start = async () => {
   try {
     const port = Number(process.env.PORT) || 3000;
-
-    // Plugins
     await server.register(cors, {
-      origin: [
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-      ],
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      credentials: true,
-    });
+  origin: true,
+  credentials: true,
+});
 
-    // Rotas
     await server.register(tenantRoutes);
     await server.register(authRoutes);
     await server.register(userRoutes);
@@ -42,22 +36,20 @@ const start = async () => {
     await server.register(billingRoutes);
     await server.register(failedUsageRoutes);
     await server.register(analyticsRoutes);
+    await server.register(alertRoutes);
 
-    // Banco
     await prisma.$connect();
-    server.log.info('🚀 Conexão com o PostgreSQL via Prisma estabelecida com sucesso.');
+    server.log.info('Conexão com o PostgreSQL via Prisma estabelecida com sucesso.');
 
-    // Redis
     const redisStatus = await redis.ping();
     server.log.info(`Redis status: ${redisStatus}`);
 
-    // Servidor
     await server.listen({
       port,
       host: '0.0.0.0',
     });
 
-    console.log(`\n🔥 Quota rodando em alta performance na porta ${port}\n`);
+    console.log(`\nServidor rodando na porta ${port}\n`);
   } catch (err) {
     server.log.error(err);
     process.exit(1);

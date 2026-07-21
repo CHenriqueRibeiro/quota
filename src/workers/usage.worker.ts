@@ -1,6 +1,7 @@
 import { Worker } from "bullmq";
 import { PrismaClient, ProviderName } from "@prisma/client";
 import Redis from "ioredis";
+import { processAlerts } from "../service/alert-engine.service";
 
 const prisma = new PrismaClient();
 
@@ -132,6 +133,25 @@ const worker = new Worker(
         latencyMs: data.latencyMs ?? null,
       },
     });
+
+
+    // ==============================
+    // PROCESSAMENTO DE ALERTAS
+    // ==============================
+    try {
+
+      await processAlerts(tenantId);
+
+    } catch (error) {
+
+      console.error(
+        "❌ Erro ao processar alertas:",
+        error
+      );
+
+    }
+
+
   },
   {
     connection: connectionOptions,
@@ -156,6 +176,7 @@ worker.on("failed", async (job, err) => {
 
 });
 
+
 process.on("SIGINT", async () => {
 
   await worker.close();
@@ -163,6 +184,8 @@ process.on("SIGINT", async () => {
   await redis.quit();
 
   process.exit(0);
+
 });
+
 
 export default worker;
