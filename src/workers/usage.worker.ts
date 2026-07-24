@@ -72,6 +72,7 @@ const worker = new Worker(
     let billingGroupId: string | null = null;
 
     if (billingGroupName) {
+
       let billingGroup = await prisma.billingGroup.findFirst({
         where: {
           tenantId,
@@ -79,23 +80,124 @@ const worker = new Worker(
         },
       });
 
+
       if (!billingGroup) {
+
         billingGroup = await prisma.billingGroup.create({
           data: {
             tenantId,
             name: billingGroupName,
           },
         });
+
       }
 
+
       billingGroupId = billingGroup.id;
+
     }
+
+
+    // ==============================
+    // RESOLVER SCOPE
+    // ==============================
+
+    let scopeId: string | null = null;
+
+
+    const scopes = await prisma.scope.findMany({
+
+      where: {
+        tenantId,
+      },
+
+
+      select: {
+
+        id: true,
+
+        billingGroups: true,
+
+        projects: true,
+
+        agents: true,
+
+        providers: true,
+
+        models: true,
+
+      },
+
+    });
+
+
+
+    const matchedScope = scopes.find((scope) => {
+
+
+      const billingMatch =
+        billingGroupName &&
+        scope.billingGroups.includes(
+          billingGroupName
+        );
+
+
+      const projectMatch =
+        project &&
+        scope.projects.includes(
+          project
+        );
+
+
+      const agentMatch =
+        agent &&
+        scope.agents.includes(
+          agent
+        );
+
+
+      const providerMatch =
+        provider &&
+        scope.providers.includes(
+          provider
+        );
+
+
+      const modelMatch =
+        model &&
+        scope.models.includes(
+          model
+        );
+
+
+
+      return (
+        billingMatch ||
+        projectMatch ||
+        agentMatch ||
+        providerMatch ||
+        modelMatch
+      );
+
+
+    });
+
+
+
+    if (matchedScope) {
+
+      scopeId = matchedScope.id;
+
+    }
+
+
 
     console.dir(
       {
         tenantId,
         apiKeyId,
         billingGroupId,
+        scopeId,
         provider,
         model,
         requestId,
@@ -103,41 +205,68 @@ const worker = new Worker(
       { depth: null }
     );
 
+
+
     const usage = await prisma.usageLog.create({
+
       data: {
+
         tenantId,
+
         billingGroupId,
+
         apiKeyId,
 
+
         traceId,
+
         agent,
+
         project,
+
         environment,
+
         externalUserId,
+
         requestGroup,
+
         tags,
 
+
         provider,
+
         model,
 
+
         promptTokens,
+
         completionTokens,
+
         totalTokens,
+
 
         estimatedCost,
 
+
         requestId,
 
+
         success: data.success ?? true,
+
         statusCode: data.statusCode ?? null,
+
         latencyMs: data.latencyMs ?? null,
+
       },
+
     });
+
 
 
     // ==============================
     // PROCESSAMENTO DE ALERTAS
     // ==============================
+
     try {
 
       await processAlerts(tenantId);
@@ -159,33 +288,106 @@ const worker = new Worker(
 );
 
 
+
 worker.on("failed", async (job, err) => {
 
   if (!job) return;
 
+
+  const data = job.data as any;
+
+
+  let billingGroupId: string | null = null;
+
+
+  if(data.billingGroup){
+
+    const billingGroup =
+      await prisma.billingGroup.findFirst({
+
+        where:{
+          tenantId:data.tenantId,
+          name:data.billingGroup
+        }
+
+      });
+
+
+    billingGroupId =
+      billingGroup?.id ?? null;
+
+  }
+
+
+
   await prisma.failedUsage.create({
-    data: {
-      tenantId: job.data.tenantId,
-      requestId: job.data.requestId,
-      traceId: job.data.traceId,
-      payload: job.data,
-      error: err.message,
-      lastAttemptAt: new Date()
+
+    data:{
+
+
+      tenantId:
+        data.tenantId,
+
+
+      requestId:
+        data.requestId ?? `failed_${job.id}`,
+
+
+      traceId:
+        data.traceId ?? null,
+
+
+      billingGroupId,
+
+
+      provider:
+        data.provider ?? null,
+
+
+      model:
+        data.model ?? null,
+
+
+      project:
+        data.project ?? null,
+
+
+      agent:
+        data.agent ?? null,
+
+
+      payload:
+        data,
+
+
+      error:
+        err.message,
+
+
+      lastAttemptAt:
+        new Date()
+
     }
+
   });
 
+
 });
+
 
 
 process.on("SIGINT", async () => {
 
   await worker.close();
+
   await prisma.$disconnect();
+
   await redis.quit();
 
   process.exit(0);
 
 });
+
 
 
 export default worker;

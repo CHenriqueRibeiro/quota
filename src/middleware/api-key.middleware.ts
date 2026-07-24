@@ -23,33 +23,26 @@ export const validateApiKey = async (
   }
 
 
-  const keyRecord = await prisma.apiKey.findUnique({
-  where: {
-    key: apiKey
+  const keyRecord = await prisma.apiKey.findFirst({
+  where:{
+    key: apiKey,
+    isActive:true
   },
-  select: {
-  id: true,
-  key: true,
-  name: true,
-  tenantId: true,
-  provider: true,
-  providerCredentialId: true,
-  allowedModels: true,
-  isActive: true
-}
+  select:{
+    id:true,
+    key:true,
+    name:true,
+    tenantId:true,
+    provider:true,
+    providerCredentialId:true,
+    allowedModels:true
+  }
 });
 
 
   if (!keyRecord) {
     return reply.status(401).send({
       error: 'Invalid API Key'
-    });
-  }
-
-
-  if (!keyRecord.isActive) {
-    return reply.status(401).send({
-      error: 'API Key inactive'
     });
   }
 

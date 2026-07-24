@@ -7,6 +7,11 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum ScopeMode {
+  FULL
+  CUSTOM
+}
+
 enum NotificationChannel {
   EMAIL
 }
@@ -29,6 +34,7 @@ enum AlertPeriod {
   DAILY
   MONTHLY
 }
+
 enum Role {
   OWNER
   MANAGER
@@ -59,6 +65,8 @@ model User {
   tenantId     String
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
+  scopeId      String?
+  scope        Scope?   @relation(fields: [scopeId], references: [id], onDelete: SetNull)
 
   @@map("users")
 }
@@ -81,9 +89,10 @@ model Tenant {
   billingGroups       BillingGroup[]
   usageLogs           UsageLog[]
   failedUsages        FailedUsage[]
-  alertConfigs AlertConfig[]
-  notifications Notification[]
+  alertConfigs        AlertConfig[]
+  notifications       Notification[]
   quota               Quota?
+  scopes              Scope[]
 
   @@map("tenants")
 }
@@ -166,14 +175,18 @@ model ApiKey {
 }
 
 model BillingGroup {
-  id        String     @id @default(uuid())
+  id        String   @id @default(uuid())
   name      String
   tenantId  String
-  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdAt DateTime   @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
   usageLogs UsageLog[]
+
+  failedUsages FailedUsage[]
+
   alertConfigs AlertConfig[]
-  
+
   @@unique([tenantId, name])
   @@map("billing_groups")
 }
@@ -200,10 +213,11 @@ model UsageLog {
   completionTokens Int
   totalTokens      Int
   estimatedCost    Float        @default(0)
-  requestId        String?
-  statusCode       Int?
-  success          Boolean      @default(true)
-  latencyMs        Int?
+
+  requestId  String?
+  statusCode Int?
+  success    Boolean @default(true)
+  latencyMs  Int?
 
   apiKeyId String?
 
@@ -231,35 +245,46 @@ model FailedUsage {
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  requestId String
+  billingGroupId String?
+  billingGroup   BillingGroup? @relation(fields: [billingGroupId], references: [id], onDelete: SetNull)
+
+  requestId String?
 
   traceId String?
+
+  provider ProviderName?
+
+  model String?
+
+  project String?
+
+  agent String?
 
   payload Json
 
   error String
 
-  attempts Int @default(0)
-
   status String @default("PENDING")
 
-  lastAttemptAt DateTime?
+  attempts Int @default(0)
+
+  lastAttemptAt DateTime @default(now())
 
   createdAt DateTime @default(now())
+
   updatedAt DateTime @updatedAt
 
   @@index([tenantId])
+  @@index([billingGroupId])
   @@index([status])
-  @@index([requestId])
-  @@map("failed_usage")
+  @@index([createdAt])
 }
 
 model AlertConfig {
-
   id String @id @default(uuid())
 
   tenantId String
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   enabled Boolean @default(true)
 
@@ -276,7 +301,7 @@ model AlertConfig {
   model String?
 
   billingGroupId String?
-  billingGroup BillingGroup? @relation(fields: [billingGroupId], references: [id], onDelete: SetNull)
+  billingGroup   BillingGroup? @relation(fields: [billingGroupId], references: [id], onDelete: SetNull)
 
   project String?
 
@@ -296,18 +321,17 @@ model AlertConfig {
   @@index([project])
   @@index([agent])
   @@index([billingGroupId])
-@@index([model])
+  @@index([model])
 }
 
 model Notification {
-
   id String @id @default(uuid())
 
   tenantId String
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   alertConfigId String
-  alertConfig AlertConfig @relation(fields: [alertConfigId], references: [id], onDelete: Cascade)
+  alertConfig   AlertConfig @relation(fields: [alertConfigId], references: [id], onDelete: Cascade)
 
   title String
 
@@ -325,9 +349,39 @@ model Notification {
   updatedAt DateTime @updatedAt
 
   @@index([tenantId])
+  @@index([status])
+  @@index([tenantId, status])
+  @@index([createdAt])
+  @@index([alertConfigId])
+}
 
-@@index([status])
-@@index([tenantId, status])
-@@index([createdAt])
-@@index([alertConfigId])
+model Scope {
+  id String @id @default(uuid())
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name String
+
+  description String?
+
+  mode ScopeMode @default(CUSTOM)
+
+  billingGroups String[]
+
+  projects String[]
+
+  agents String[]
+
+  providers ProviderName[]
+
+  models String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
 }

@@ -2,6 +2,7 @@ import type { FastifyReply } from "fastify";
 import { PrismaClient } from "@prisma/client";
 import { usageQueue } from "../lib/queue";
 import type { AuthenticatedRequest } from "../types/auth";
+import ScopeService from "../service/scope.service";
 
 const prisma = new PrismaClient();
 
@@ -22,7 +23,15 @@ export class AnalyticsController {
       const query = request.query as DashboardQuery;
 
 const tenantId = request.user?.tenantId;
+const user = request.user;
 
+if(!user){
+
+ return reply.status(401).send({
+   message:"Usuário não autenticado."
+ });
+
+}
 if (!tenantId) {
   return reply.status(401).send({
     message: "Tenant não identificado."
@@ -47,16 +56,12 @@ const endDate = query.endDate
   : now;
 
 
-const where = {
-
-  tenantId,
-
-  createdAt:{
-    gte:startDate,
-    lte:endDate
-  }
-
-};
+const where =
+ await ScopeService.buildWhere(
+   user,
+   startDate,
+   endDate
+ );
 
 
       const usage =
@@ -853,17 +858,49 @@ const latency = {
 
     }catch(error){
 
-      console.error(error);
+  console.error(error);
 
 
-      return reply.status(500).send({
+  if(
+    error instanceof Error &&
+    error.message === "Usuário não possui Scope."
+  ){
 
-        message:
-          "Erro ao gerar dashboard."
+    return reply.status(403).send({
 
-      });
+      message:
+        "Usuário sem permissão de acesso ao dashboard."
 
-    }
+    });
+
+  }
+
+
+
+  if(
+    error instanceof Error &&
+    error.message === "Scope CUSTOM sem regras configuradas."
+  ){
+
+    return reply.status(403).send({
+
+      message:
+        "Scope sem regras configuradas."
+
+    });
+
+  }
+
+
+
+  return reply.status(500).send({
+
+    message:
+      "Erro ao gerar dashboard."
+
+  });
+
+}
 
   }
 
