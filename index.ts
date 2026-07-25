@@ -13,6 +13,7 @@ import { failedUsageRoutes } from './src/routes/failedUsage.routes';
 import { analyticsRoutes } from './src/routes/analytics.routes';
 import { alertRoutes } from './src/routes/alert.routes';
 import { scopeRoutes } from './src/routes/scope.routes';
+import { homeRoutes } from './src/routes/home.routes';
 
 const prisma = new PrismaClient();
 
@@ -39,6 +40,7 @@ const start = async () => {
     await server.register(analyticsRoutes);
     await server.register(alertRoutes);
     await server.register(scopeRoutes);
+    await server.register(homeRoutes);
 
     await prisma.$connect();
     server.log.info('Conexão com o PostgreSQL via Prisma estabelecida com sucesso.');
