@@ -12,6 +12,11 @@ enum ScopeMode {
   CUSTOM
 }
 
+enum WidgetSecurityLevel {
+  STANDARD
+  STRICT
+}
+
 enum AssistantType {
   GENERAL
   FINANCE
@@ -105,6 +110,8 @@ model Tenant {
   Budget              Budget[]
   Assistant           Assistant[]
   Topic               Topic[]
+  Widget              Widget[]
+  WidgetRequestLog    WidgetRequestLog[]
 
   @@map("tenants")
 }
@@ -477,7 +484,8 @@ model Assistant {
   Topic     Topic[]
   apiKeyId  String?
 
-  apiKey ApiKey? @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+  apiKey ApiKey?  @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+  Widget Widget[]
 
   @@index([tenantId])
   @@index([scopeId])
@@ -514,4 +522,109 @@ model Topic {
 
   @@index([tenantId])
   @@index([assistantId])
+}
+
+model Widget {
+  id String @id @default(uuid())
+
+  tenantId String
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  assistantId String
+
+  assistant Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+
+  name String
+
+  publicKey String @unique
+
+  allowedDomains Json
+
+  securityLevel WidgetSecurityLevel @default(STANDARD)
+
+  rateLimit Int @default(100)
+
+  logo String?
+
+  primaryColor String?
+
+  welcomeMessage String?
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  sessions WidgetSession[]
+
+  logs WidgetRequestLog[]
+
+  @@index([tenantId])
+  @@index([assistantId])
+  @@index([active])
+  @@map("widgets")
+}
+
+model WidgetSession {
+  id String @id @default(uuid())
+
+  widgetId String
+
+  widget Widget @relation(fields: [widgetId], references: [id], onDelete: Cascade)
+
+  token String @unique
+
+  nonce String
+
+  expiresAt DateTime
+
+  ipHash String?
+
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([widgetId])
+  @@index([expiresAt])
+  @@map("widget_sessions")
+}
+
+model WidgetRequestLog {
+  id String @id @default(uuid())
+
+  requestId String?
+
+  widgetId String
+
+  widget Widget @relation(fields: [widgetId], references: [id], onDelete: Cascade)
+
+  tenantId String
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  topicId String?
+
+  origin String?
+
+  path String?
+
+  statusCode Int
+
+  latencyMs Int?
+
+  ipHash String?
+
+  userAgent String?
+
+  errorCode String?
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([widgetId])
+  @@index([createdAt])
+  @@index([errorCode])
+  @@map("widget_request_logs")
 }

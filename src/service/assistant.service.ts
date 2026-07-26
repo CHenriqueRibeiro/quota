@@ -4,19 +4,21 @@ import type { AuthenticatedUser } from "../types/auth";
 const prisma = new PrismaClient();
 
 interface CreateAssistantBody {
+
   name: string;
+
   description?: string;
 
   type: AssistantType;
 
-  provider: ProviderName;
-  model: string;
+  apiKeyId: string;
 
-  apiKeyId?: string;
+  model: string;
 
   systemPrompt: string;
 
   temperature?: number;
+
   maxTokens?: number;
 
   enabled?: boolean;
@@ -24,220 +26,252 @@ interface CreateAssistantBody {
   scopeId?: string;
 
   isDefault?: boolean;
+
   sortOrder?: number;
+
 }
 
 class AssistantService {
 
   async create(
-    user: AuthenticatedUser,
-    data: CreateAssistantBody
-  ){
-
-    if(!data.name.trim()){
-
-      throw new Error(
-        "Nome \u00e9 obrigat\u00f3rio."
-      );
-
-    }
-
-
-
-    if(!data.systemPrompt.trim()){
-
-      throw new Error(
-        "Prompt do sistema \u00e9 obrigat\u00f3rio."
-      );
-
-    }
-
-
-
-    if(data.scopeId){
-
-      const scope =
-        await prisma.scope.findFirst({
-
-          where:{
-
-            id:data.scopeId,
-
-            tenantId:user.tenantId
-
-          }
-
-        });
-
-
-
-      if(!scope){
-
-        throw new Error(
-          "Scope n\u00e3o encontrado."
-        );
-
-      }
-
-    }
-
-
-
-    if(data.apiKeyId){
-
-      const apiKey =
-        await prisma.apiKey.findFirst({
-
-          where:{
-
-            id:data.apiKeyId,
-
-            tenantId:user.tenantId,
-
-            isActive:true
-
-          }
-
-        });
-
-
-
-      if(!apiKey){
-
-        throw new Error(
-          "API Key n\u00e3o encontrada."
-        );
-
-      }
-
-    }
-
-
-
-    if(data.isDefault){
-
-      await prisma.assistant.updateMany({
-
-        where:{
-
-          tenantId:user.tenantId,
-
-          isDefault:true
-
-        },
-
-        data:{
-
-          isDefault:false
-
-        }
-
-      });
-
-    }
-
-
-
-    const assistant =
-      await prisma.assistant.create({
-
-        data:{
-
-          tenantId:user.tenantId,
-
-          scopeId:data.scopeId,
-
-          apiKeyId:data.apiKeyId,
-
-          name:data.name,
-
-          description:data.description,
-
-          type:data.type,
-
-          provider:data.provider,
-
-          model:data.model,
-
-          systemPrompt:data.systemPrompt,
-
-          temperature:
-            data.temperature ?? 0.2,
-
-          maxTokens:
-            data.maxTokens ?? 4096,
-
-          enabled:
-            data.enabled ?? true,
-
-          isDefault:
-            data.isDefault ?? false,
-
-          sortOrder:
-            data.sortOrder ?? 0
-
-        }
-
-      });
-
-
-
-    return assistant;
+  user: AuthenticatedUser,
+  data: CreateAssistantBody
+){
+
+  if(!data.name.trim()){
+
+    throw new Error(
+      "Nome é obrigatório."
+    );
 
   }
 
-  async list(
-    user: AuthenticatedUser
-  ){
 
-    const assistants =
-      await prisma.assistant.findMany({
+  if(!data.systemPrompt.trim()){
+
+    throw new Error(
+      "Prompt do sistema é obrigatório."
+    );
+
+  }
+
+
+  if(!data.apiKeyId){
+
+    throw new Error(
+      "API Key é obrigatória."
+    );
+
+  }
+
+
+  if(data.scopeId){
+
+    const scope =
+      await prisma.scope.findFirst({
 
         where:{
+
+          id:data.scopeId,
 
           tenantId:user.tenantId
 
-        },
-
-        include:{
-
-          scope:{
-
-            select:{
-
-              id:true,
-
-              name:true
-
-            }
-
-          }
-
-        },
-
-        orderBy:[
-
-          {
-
-            sortOrder:"asc"
-
-          },
-
-          {
-
-            createdAt:"asc"
-
-          }
-
-        ]
+        }
 
       });
 
 
+    if(!scope){
 
-    return assistants;
+      throw new Error(
+        "Scope não encontrado."
+      );
+
+    }
 
   }
+
+
+  const apiKey =
+    await prisma.apiKey.findFirst({
+
+      where:{
+
+        id:data.apiKeyId,
+
+        tenantId:user.tenantId,
+
+        isActive:true
+
+      }
+
+    });
+
+
+  if(!apiKey){
+
+    throw new Error(
+      "API Key não encontrada."
+    );
+
+  }
+
+
+  if(data.isDefault){
+
+    await prisma.assistant.updateMany({
+
+      where:{
+
+        tenantId:user.tenantId,
+
+        isDefault:true
+
+      },
+
+      data:{
+
+        isDefault:false
+
+      }
+
+    });
+
+  }
+
+
+  const assistant =
+    await prisma.assistant.create({
+
+      data:{
+
+        tenantId:user.tenantId,
+
+        scopeId:data.scopeId,
+
+        apiKeyId:data.apiKeyId,
+
+        name:data.name,
+
+        description:data.description,
+
+        type:data.type,
+
+        provider:apiKey.provider,
+
+        model:data.model,
+
+        systemPrompt:data.systemPrompt,
+
+        temperature:
+          data.temperature ?? 0.2,
+
+        maxTokens:
+          data.maxTokens ?? 4096,
+
+        enabled:
+          data.enabled ?? true,
+
+        isDefault:
+          data.isDefault ?? false,
+
+        sortOrder:
+          data.sortOrder ?? 0
+
+      }
+
+    });
+
+
+  return assistant;
+
+}
+
+  async list(
+  user: AuthenticatedUser
+){
+
+  const assistants =
+    await prisma.assistant.findMany({
+
+      where:{
+
+        tenantId:user.tenantId
+
+      },
+
+      select:{
+
+        id:true,
+
+        name:true,
+
+        description:true,
+
+        type:true,
+
+        provider:true,
+
+        model:true,
+
+        enabled:true,
+
+        isDefault:true,
+
+        sortOrder:true,
+
+        createdAt:true,
+
+        scope:{
+
+          select:{
+
+            id:true,
+
+            name:true
+
+          }
+
+        },
+
+        apiKey:{
+
+          select:{
+
+            id:true,
+
+            name:true,
+
+            provider:true
+
+          }
+
+        }
+
+      },
+
+      orderBy:[
+
+        {
+
+          sortOrder:"asc"
+
+        },
+
+        {
+
+          createdAt:"asc"
+
+        }
+
+      ]
+
+    });
+
+
+  return assistants;
+
+}
 
   async listAvailableApiKeys(
     user: AuthenticatedUser
@@ -284,35 +318,73 @@ class AssistantService {
   ){
 
     const assistant =
-      await prisma.assistant.findFirst({
+  await prisma.assistant.findFirst({
 
-        where:{
+    where:{
 
-          id,
+      id,
 
-          tenantId:user.tenantId
+      tenantId:user.tenantId
 
-        },
+    },
 
-        include:{
+    include:{
 
-          scope:{
+      scope:{
 
-            select:{
+        select:{
 
-              id:true,
+          id:true,
 
-              name:true,
+          name:true,
 
-              description:true
-
-            }
-
-          }
+          description:true
 
         }
 
-      });
+      },
+
+      apiKey:{
+
+        select:{
+
+          id:true,
+
+          name:true,
+
+          provider:true
+
+        }
+
+      },
+
+      Topic:{
+
+        select:{
+
+          id:true,
+
+          name:true,
+
+          category:true,
+
+          enabled:true,
+
+          sortOrder:true
+
+        },
+
+        orderBy:{
+
+          sortOrder:"asc"
+
+        }
+
+      }
+
+    }
+
+  });
 
 
 
@@ -331,17 +403,42 @@ class AssistantService {
   }
 
   async update(
-    user: AuthenticatedUser,
-    id: string,
-    data: Partial<CreateAssistantBody>
-  ){
+  user: AuthenticatedUser,
+  id: string,
+  data: Partial<CreateAssistantBody>
+){
 
-    const existing =
-      await prisma.assistant.findFirst({
+  const existing =
+    await prisma.assistant.findFirst({
+
+      where:{
+
+        id,
+
+        tenantId:user.tenantId
+
+      }
+
+    });
+
+
+  if(!existing){
+
+    throw new Error(
+      "Assistente não encontrado."
+    );
+
+  }
+
+
+  if(data.scopeId){
+
+    const scope =
+      await prisma.scope.findFirst({
 
         where:{
 
-          id,
+          id:data.scopeId,
 
           tenantId:user.tenantId
 
@@ -350,96 +447,107 @@ class AssistantService {
       });
 
 
-
-    if(!existing){
+    if(!scope){
 
       throw new Error(
-        "Assistente n\u00e3o encontrado."
+        "Scope não encontrado."
+      );
+
+    }
+
+  }
+
+
+  let provider: ProviderName | undefined;
+
+
+  if(data.apiKeyId){
+
+    const apiKey =
+      await prisma.apiKey.findFirst({
+
+        where:{
+
+          id:data.apiKeyId,
+
+          tenantId:user.tenantId,
+
+          isActive:true
+
+        }
+
+      });
+
+
+    if(!apiKey){
+
+      throw new Error(
+        "API Key não encontrada."
       );
 
     }
 
 
+    provider =
+      apiKey.provider;
 
-    if(data.scopeId){
-
-      const scope =
-        await prisma.scope.findFirst({
-
-          where:{
-
-            id:data.scopeId,
-
-            tenantId:user.tenantId
-
-          }
-
-        });
+  }
 
 
+  if(data.isDefault){
 
-      if(!scope){
+    await prisma.assistant.updateMany({
 
-        throw new Error(
-          "Scope n\u00e3o encontrado."
-        );
+      where:{
+
+        tenantId:user.tenantId,
+
+        isDefault:true,
+
+        id:{
+          not:id
+        }
+
+      },
+
+      data:{
+
+        isDefault:false
 
       }
 
-    }
-
-
-
-    if(data.isDefault){
-
-      await prisma.assistant.updateMany({
-
-        where:{
-
-          tenantId:user.tenantId,
-
-          isDefault:true,
-
-          id:{
-            not:id
-          }
-
-        },
-
-        data:{
-
-          isDefault:false
-
-        }
-
-      });
-
-    }
-
-
-
-    const assistant =
-      await prisma.assistant.update({
-
-        where:{
-
-          id
-
-        },
-
-        data:{
-
-          ...data
-
-        }
-
-      });
-
-
-
-    return assistant;
+    });
 
   }
+
+
+  const assistant =
+    await prisma.assistant.update({
+
+      where:{
+
+        id
+
+      },
+
+      data:{
+
+        ...data,
+
+        ...(provider && {
+
+          provider
+
+        })
+
+      }
+
+    });
+
+
+  return assistant;
+
+}
 
   async delete(
     user: AuthenticatedUser,

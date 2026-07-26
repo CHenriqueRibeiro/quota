@@ -2,6 +2,10 @@ import 'dotenv/config';
 import cors from '@fastify/cors';
 import Fastify from 'fastify';
 import { PrismaClient } from '@prisma/client';
+import fastifyStatic from '@fastify/static';
+import path from 'path';
+import multipart from "@fastify/multipart";
+
 import { redis } from './src/lib/redis';
 import { tenantRoutes } from './src/routes/tentant.routes';
 import { authRoutes } from './src/routes/auth.routes';
@@ -16,6 +20,11 @@ import { scopeRoutes } from './src/routes/scope.routes';
 import { homeRoutes } from './src/routes/home.routes';
 import { assistantRoutes } from './src/routes/assistant.routes';
 import { topicRoutes } from './src/routes/topic.routes';
+import { widgetRoutes } from "./src/routes/widget.routes";
+import { widgetChatRoutes } from "./src/routes/widget-chat.routes";
+import { widgetUploadRoutes } from "./src/routes/widget-upload.routes";
+
+
 
 const prisma = new PrismaClient();
 
@@ -24,13 +33,22 @@ const server = Fastify({
   bodyLimit: 20 * 1024 * 1024,
 });
 
+
 const start = async () => {
   try {
     const port = Number(process.env.PORT) || 3000;
+
     await server.register(cors, {
-  origin: true,
-  credentials: true,
-});
+      origin: true,
+      credentials: true,
+    });
+
+    await server.register(multipart);
+
+    await server.register(fastifyStatic, {
+      root: path.join(process.cwd(), 'public'),
+    });
+
 
     await server.register(tenantRoutes);
     await server.register(authRoutes);
@@ -45,24 +63,33 @@ const start = async () => {
     await server.register(homeRoutes);
     await server.register(assistantRoutes);
     await server.register(topicRoutes);
+    await server.register(widgetRoutes);
+    await server.register(widgetChatRoutes);
+    await server.register(widgetUploadRoutes);
+
 
     await prisma.$connect();
     server.log.info('Conexão com o PostgreSQL via Prisma estabelecida com sucesso.');
 
+
     const redisStatus = await redis.ping();
     server.log.info(`Redis status: ${redisStatus}`);
+
 
     await server.listen({
       port,
       host: '0.0.0.0',
     });
 
+
     console.log(`\nServidor rodando na porta ${port}\n`);
+
   } catch (err) {
     server.log.error(err);
     process.exit(1);
   }
 };
+
 
 const gracefulShutdown = async (signal: string) => {
   server.log.info(`Received ${signal}, shutting down gracefully...`);
@@ -80,14 +107,17 @@ const gracefulShutdown = async (signal: string) => {
     }
 
     process.exit(0);
+
   } catch (err) {
     server.log.error(err);
     process.exit(1);
   }
 };
 
+
 process.on('SIGINT', () => void gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => void gracefulShutdown('SIGTERM'));
 process.on('unhandledRejection', (reason) => server.log.error(reason));
+
 
 start();
