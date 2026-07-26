@@ -98,15 +98,20 @@ export async function callProvider(options: ProviderCallOptions): Promise<Provid
 };
 
 if (provider === 'google') {
+  const text =
+    Array.isArray(body?.messages)
+      ? body.messages
+          .map((message: any) => message?.content)
+          .filter(Boolean)
+          .join('\n\n')
+      : body?.prompt ?? '';
+
   requestBody = {
     contents: [
       {
         parts: [
           {
-            text:
-              body?.messages?.[0]?.content ??
-              body?.prompt ??
-              ''
+            text
           }
         ]
       }

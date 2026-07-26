@@ -12,6 +12,15 @@ enum ScopeMode {
   CUSTOM
 }
 
+enum AssistantType {
+  GENERAL
+  FINANCE
+  OPERATIONS
+  SUPPORT
+  SALES
+  CUSTOM
+}
+
 enum NotificationChannel {
   EMAIL
 }
@@ -94,6 +103,8 @@ model Tenant {
   quota               Quota?
   scopes              Scope[]
   Budget              Budget[]
+  Assistant           Assistant[]
+  Topic               Topic[]
 
   @@map("tenants")
 }
@@ -168,6 +179,8 @@ model ApiKey {
   updatedAt DateTime @updatedAt
 
   usageLogs UsageLog[]
+
+  assistants Assistant[]
 
   @@unique([tenantId, name])
   @@index([tenantId])
@@ -384,6 +397,8 @@ model Scope {
 
   users User[]
 
+  assistants Assistant[]
+
   @@unique([tenantId, name])
   @@index([tenantId])
 }
@@ -415,4 +430,88 @@ model Budget {
   @@index([billingGroupId])
   @@index([agent])
   @@index([project])
+}
+
+model Assistant {
+  id String @id @default(uuid())
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  scopeId String?
+  scope   Scope?  @relation(fields: [scopeId], references: [id], onDelete: SetNull)
+
+  name        String
+  description String?
+
+  type AssistantType @default(CUSTOM)
+
+  provider ProviderName
+  model    String
+
+  systemPrompt String @db.Text
+
+  temperature Float @default(0.2)
+  maxTokens   Int   @default(2000)
+
+  enabled Boolean @default(true)
+
+  /**
+   * Futuro:
+   * HOME
+   * WIDGET
+   * API
+   */
+  isDefault Boolean @default(false)
+
+  /**
+   * Ordem de exibição
+   */
+  sortOrder Int @default(0)
+
+  createdBy String?
+  updatedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Topic     Topic[]
+  apiKeyId  String?
+
+  apiKey ApiKey? @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([scopeId])
+  @@index([enabled])
+  @@index([type])
+}
+
+model Topic {
+  id String @id @default(uuid())
+
+  tenantId String
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  assistantId String?
+
+  assistant Assistant? @relation(fields: [assistantId], references: [id], onDelete: SetNull)
+
+  name String
+
+  description String?
+
+  category String?
+
+  questions Json?
+
+  enabled Boolean @default(true)
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([assistantId])
 }
