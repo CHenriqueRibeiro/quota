@@ -23,18 +23,50 @@ export class BillingController {
       const group = await prisma.billingGroup.create({ data: { tenantId, name } });
       return reply.status(201).send(group);
     } catch (err: any) {
-  request.log.error({ err }, 'failed creating billing group');
+      request.log.error({ err }, 'failed creating billing group');
 
-  if (err.code === 'P2002') {
-    return reply.status(409).send({
-      error: 'Billing group already exists'
-    });
+      if (err.code === 'P2002') {
+        return reply.status(409).send({
+          error: 'Billing group already exists'
+        });
+      }
+
+      return reply.status(500).send({
+        error: 'failed to create billing group'
+      });
+    }
   }
 
-  return reply.status(500).send({
-    error: 'failed to create billing group'
-  });
-}
+  async delete(request: FastifyRequest, reply: FastifyReply) {
+    const params = request.params as any;
+    const id = params?.id;
+    const tenantId = params?.tenantId;
+
+    if (!id || typeof id !== 'string') {
+      return reply.status(400).send({ error: 'id is required' });
+    }
+
+    try {
+      const group = await prisma.billingGroup.findFirst({
+        where: {
+          id,
+          ...(tenantId ? { tenantId } : {})
+        }
+      });
+
+      if (!group) {
+        return reply.status(404).send({ error: 'Billing group not found' });
+      }
+
+      await prisma.billingGroup.delete({
+        where: { id: group.id }
+      });
+
+      return reply.status(200).send({ message: 'Billing group deleted successfully' });
+    } catch (err: any) {
+      request.log.error({ err }, 'failed deleting billing group');
+      return reply.status(500).send({ error: 'failed to delete billing group' });
+    }
   }
 }
 

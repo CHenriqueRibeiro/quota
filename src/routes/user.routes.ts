@@ -48,4 +48,27 @@ export async function userRoutes(
   );
 
 
+
+  server.get(
+    '/users',
+    {
+      preHandler: [
+        authenticate
+      ]
+    },
+    userController.listUsers
+  );
+
+
+
+  server.get(
+    '/tenants/:tenantId/users',
+    {
+      preHandler: [
+        authenticate
+      ]
+    },
+    userController.listUsers
+  );
+
 }

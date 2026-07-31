@@ -23,6 +23,7 @@ export class UserController {
     this.createUser = this.createUser.bind(this);
     this.createOwner = this.createOwner.bind(this);
     this.assignScope = this.assignScope.bind(this);
+    this.listUsers = this.listUsers.bind(this);
 
   }
 
@@ -589,5 +590,70 @@ export class UserController {
   }
 
 
+
+  async listUsers(
+    request: AuthenticatedRequest,
+    reply: FastifyReply
+  ) {
+    try {
+      const actor = request.user;
+
+      if (!actor) {
+        return reply.status(401).send({
+          error: 'Unauthorized'
+        });
+      }
+
+      const { tenantId: paramTenantId } = (request.params as any) || {};
+      const { tenantId: queryTenantId } = (request.query as any) || {};
+
+      const targetTenantId = paramTenantId?.trim() || queryTenantId?.trim() || actor.tenantId;
+
+      if (!targetTenantId) {
+        return reply.status(400).send({
+          error: 'tenantId é obrigatório'
+        });
+      }
+
+      if (actor.role !== 'OWNER' && targetTenantId !== actor.tenantId) {
+        return reply.status(403).send({
+          error: 'Você não tem permissão para visualizar usuários deste tenant'
+        });
+      }
+
+      const users = await prisma.user.findMany({
+        where: {
+          tenantId: targetTenantId
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          tenantId: true,
+          scopeId: true,
+          createdAt: true,
+          scope: {
+            select: {
+              id: true,
+              name: true,
+              mode: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+      return reply.status(200).send(users);
+    } catch (error) {
+      request.log.error(error);
+
+      return reply.status(400).send({
+        error: 'Erro ao listar usuários'
+      });
+    }
+  }
 
 }

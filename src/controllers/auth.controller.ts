@@ -38,7 +38,7 @@ export class AuthController {
 
     return reply.send({
       token,
-      user: { id: user.id, role: user.role, tenantId: user.tenantId }
+      user: { id: user.id, role: user.role, tenantId: user.tenantId, name: user.name, email: user.email }
     });
 
   } catch (error) {
