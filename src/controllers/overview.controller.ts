@@ -1,97 +1,38 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { PrismaClient } from "@prisma/client";
+import ScopeService from "../service/scope.service";
+import type { AuthenticatedRequest } from "../types/auth";
 
 const prisma = new PrismaClient();
 
-
 type OverviewQuery = {
-
   startDate?: string;
-
   endDate?: string;
-
 };
 
-
-
 export class OverviewController {
-
-
   async overview(
     request: FastifyRequest,
     reply: FastifyReply
   ) {
-
-
     try {
+      const authRequest = request as AuthenticatedRequest;
+      const user = authRequest.user;
 
-
-      const query =
-        request.query as OverviewQuery;
-
-
-
-      const tenantId =
-        request.user?.tenantId;
-
-
-
-      if(!tenantId){
-
+      if (!user || !user.tenantId) {
         return reply.status(401).send({
-
-          message:
-            "Tenant não identificado."
-
+          message: "Tenant não identificado."
         });
-
       }
 
-
-
+      const query = request.query as OverviewQuery;
       const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+      const startDate = query.startDate ? new Date(query.startDate) : startOfMonth;
+      const endDate = query.endDate ? new Date(query.endDate) : now;
 
-
-      const startOfMonth =
-        new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          1
-        );
-
-
-
-      const startDate =
-        query.startDate
-          ? new Date(query.startDate)
-          : startOfMonth;
-
-
-
-      const endDate =
-        query.endDate
-          ? new Date(query.endDate)
-          : now;
-
-
-
-      const where = {
-
-
-        tenantId,
-
-
-        createdAt:{
-
-          gte:startDate,
-
-          lte:endDate
-
-        }
-
-
-      };
+      const where = await ScopeService.buildWhere(user, startDate, endDate);
 
 
 

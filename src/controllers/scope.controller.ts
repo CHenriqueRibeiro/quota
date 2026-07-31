@@ -66,16 +66,19 @@ console.log("USER:", request.user);
 
     const tenantId = actor.tenantId;
 
+    const body = request.body as CreateScopeBody;
     const {
       name,
       description,
-      mode,
       billingGroups,
       projects,
       agents,
       providers,
       models
-    } = request.body as CreateScopeBody;
+    } = body;
+
+    const rawMode = body.mode as any;
+    const mode: ScopeMode = (rawMode === "ALL" ? "FULL" : rawMode) as ScopeMode;
 
     const tenant = await prisma.tenant.findUnique({
       where: {
@@ -93,7 +96,7 @@ console.log("USER:", request.user);
       tenantId,
       name,
       description,
-      mode,
+      mode: mode || "FULL",
       billingGroups,
       projects,
       agents,
@@ -143,47 +146,29 @@ console.log("USER:", request.user);
   async list(
     request: AuthenticatedRequest,
     reply: FastifyReply
-  ){
-
-    try{
-
-
+  ) {
+    try {
       const actor = request.user;
+      if (!actor) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
 
+      const paramTenantId = (request.params as any)?.tenantId;
+      const queryTenantId = (request.query as any)?.tenantId;
+      const tenantId = paramTenantId || queryTenantId || actor.tenantId;
 
-if(!actor){
+      if (actor.role !== "OWNER" && actor.tenantId !== tenantId) {
+        return reply.status(403).send({ error: "Sem permissão para este tenant" });
+      }
 
-  return reply.status(401).send({
-    error:"Unauthorized"
-  });
-
-}
-
-
-
-const scopes =
-  await ScopeService.list(
-    actor.tenantId
-  );
-
-
-
+      const scopes = await ScopeService.list(tenantId);
       return reply.send(scopes);
-
-
-
-    }catch(error){
-
-
+    } catch (error) {
       request.log.error(error);
-
-
       return reply.status(400).send({
-        error:"Erro ao listar Scopes.",
+        error: "Erro ao listar Scopes.",
       });
-
     }
-
   }
 
 
@@ -276,34 +261,21 @@ const scope =
 
 
 
-      const body =
-        request.body as Partial<CreateScopeBody>;
-
-
-
       const actor = request.user;
+      if (!actor) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
 
+      const body = request.body as any;
+      if (body?.mode === "ALL") {
+        body.mode = "FULL";
+      }
 
-if(!actor){
-
- return reply.status(401).send({
-  error:"Unauthorized"
- });
-
-}
-
-
-
-const scope =
- await ScopeService.update(
-
-   actor.tenantId,
-
-   id,
-
-   body
-
- );
+      const scope = await ScopeService.update(
+        actor.tenantId,
+        id,
+        body
+      );
 
 
 
@@ -390,81 +362,46 @@ if(!actor){
 
 
   async assignUser(
-  request: AuthenticatedRequest,
-  reply: FastifyReply
-){
+    request: AuthenticatedRequest,
+    reply: FastifyReply
+  ) {
+    try {
+      const actor = request.user;
 
-  try{
+      if (!actor) {
+        return reply.status(401).send({
+          error: "Unauthorized"
+        });
+      }
 
+      if (
+        actor.role !== "OWNER" &&
+        actor.role !== "MANAGER"
+      ) {
+        return reply.status(403).send({
+          error: "Sem permissão."
+        });
+      }
 
-    const actor = request.user;
-
-
-    if(!actor){
-
-      return reply.status(401).send({
-        error:"Unauthorized"
-      });
-
-    }
-
-
-
-    if(
-      actor.role !== "OWNER" &&
-      actor.role !== "MANAGER"
-    ){
-
-      return reply.status(403).send({
-        error:"Sem permissão."
-      });
-
-    }
-
-
-
-
-    const {
-      userId,
-      scopeId,
-
-    } = request.body as AssignUserBody;
-
-
-
-
-
-    const user =
-      await ScopeService.assignUser(
-
-        actor.tenantId,
-
+      const {
         userId,
+        scopeId,
+      } = request.body as AssignUserBody;
 
+      const user = await ScopeService.assignUser(
+        actor,
+        userId,
         scopeId
-
       );
 
-
-
-    return reply.send(user);
-
-
-
-  }catch(error){
-
-
-    request.log.error(error);
-
-
-    return reply.status(400).send({
-      error:"Erro ao vincular Scope.",
-    });
-
-
+      return reply.send(user);
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.status(400).send({
+        error: error instanceof Error ? error.message : "Erro ao vincular Scope.",
+      });
+    }
   }
-
-}
 
 
 }

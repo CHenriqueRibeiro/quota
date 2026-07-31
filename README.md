@@ -366,7 +366,7 @@ Cria um novo Scope de filtragem para restringir a visualização de métricas e 
 - **Autenticação**: `Bearer <token>` (Requer role `OWNER` ou `MANAGER`)
 - **Body (JSON)**:
   - `name` (string, **Obrigatório**): Nome do escopo.
-  - `mode` (string, **Obrigatório**): Modo de acesso (`ALL` | `CUSTOM`).
+  - `mode` (string, **Obrigatório**): Modo de acesso (`FULL` | `CUSTOM` ou `ALL`). Padrão recomendado: `"FULL"`.
   - `description` (string, **Opcional**): Descrição funcional.
   - `billingGroups` (array de strings, **Opcional**): Nomes dos billing groups permitidos.
   - `projects` (array de strings, **Opcional**): Nomes dos projetos permitidos.

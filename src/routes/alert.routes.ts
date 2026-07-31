@@ -4,68 +4,51 @@ import { authenticate, authorize } from "../middleware/auth.middleware";
 
 
 export async function alertRoutes(server: FastifyInstance) {
-
   server.post(
     "/alerts",
-    {
-      preHandler: [
-        authenticate,
-        authorize("MANAGER")
-      ]
-    },
+    { preHandler: [authenticate, authorize("MANAGER")] },
     AlertController.create
   );
 
-
   server.get(
-    "/alerts/tenants/:tenantId",
-    {
-      preHandler: [
-        authenticate,
-        authorize("MANAGER")
-      ]
-    },
+    "/alerts",
+    { preHandler: [authenticate, authorize("MANAGER")] },
     AlertController.list
   );
 
-
+  server.get(
+    "/alerts/tenants/:tenantId",
+    { preHandler: [authenticate, authorize("MANAGER")] },
+    AlertController.list
+  );
 
   server.post(
-    "/alerts/process/:tenantId",
-    {
-      preHandler: [
-        authenticate,
-        authorize("MANAGER")
-      ]
-    },
+    "/alerts/process",
+    { preHandler: [authenticate, authorize("MANAGER")] },
     AlertController.process
   );
 
-
+  server.post(
+    "/alerts/process/:tenantId",
+    { preHandler: [authenticate, authorize("MANAGER")] },
+    AlertController.process
+  );
 
   server.post(
     "/alerts/test/:alertConfigId",
-    {
-      preHandler: [
-        authenticate,
-        authorize("MANAGER")
-      ]
-    },
+    { preHandler: [authenticate, authorize("MANAGER")] },
     AlertController.test
   );
 
-
-
   server.get(
-    "/alerts/notifications/:tenantId",
-    {
-      preHandler: [
-        authenticate,
-        authorize("MANAGER")
-      ]
-    },
+    "/alerts/notifications",
+    { preHandler: [authenticate, authorize("MANAGER")] },
     AlertController.notifications
   );
 
-
+  server.get(
+    "/alerts/notifications/:tenantId",
+    { preHandler: [authenticate, authorize("MANAGER")] },
+    AlertController.notifications
+  );
 }

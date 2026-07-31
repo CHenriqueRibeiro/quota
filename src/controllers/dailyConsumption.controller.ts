@@ -1,77 +1,37 @@
 import type { FastifyReply } from "fastify";
 import { PrismaClient } from "@prisma/client";
 import type { AuthenticatedRequest } from "../types/auth";
+import ScopeService from "../service/scope.service";
 
 const prisma = new PrismaClient();
-
 
 type DailyConsumptionQuery = {
   startDate?: string;
   endDate?: string;
 };
 
-
 export class DailyConsumptionController {
-
-
   async dailyConsumption(
     request: AuthenticatedRequest,
     reply: FastifyReply
   ) {
-
     try {
+      const user = request.user;
 
-      const query =
-        request.query as DailyConsumptionQuery;
-
-
-      const tenantId =
-        request.user?.tenantId;
-
-
-      if(!tenantId){
-
+      if (!user || !user.tenantId) {
         return reply.status(401).send({
-          error:"Tenant não encontrado"
+          error: "Tenant não encontrado"
         });
-
       }
 
-
+      const query = request.query as DailyConsumptionQuery;
       const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+      const startDate = query.startDate ? new Date(query.startDate) : startOfMonth;
+      const endDate = query.endDate ? new Date(query.endDate) : now;
 
-      const startOfMonth =
-        new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          1
-        );
-
-
-      const startDate =
-        query.startDate
-          ? new Date(query.startDate)
-          : startOfMonth;
-
-
-      const endDate =
-        query.endDate
-          ? new Date(query.endDate)
-          : now;
-
-
-
-      const where = {
-
-        tenantId,
-
-        createdAt:{
-          gte:startDate,
-          lte:endDate
-        }
-
-      };
+      const where = await ScopeService.buildWhere(user, startDate, endDate);
 
 
 

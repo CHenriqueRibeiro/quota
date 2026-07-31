@@ -14,19 +14,23 @@ export class FailedUsageController {
     request: AuthenticatedRequest,
     reply: FastifyReply
   ) {
-
     try {
-
-      const tenantId =
-        request.user?.tenantId ?? request.tenantId;
-
-
-      if (!tenantId) {
-        return reply.status(403).send({
-          error: "Tenant missing"
-        });
+      const actor = request.user;
+      if (!actor) {
+        return reply.status(401).send({ error: "Unauthorized" });
       }
 
+      const paramTenantId = (request.params as any)?.tenantId;
+      const queryTenantId = (request.query as any)?.tenantId;
+      const tenantId = paramTenantId || queryTenantId || actor.tenantId;
+
+      if (!tenantId) {
+        return reply.status(400).send({ error: "Tenant missing" });
+      }
+
+      if (actor.role !== "OWNER" && actor.tenantId !== tenantId) {
+        return reply.status(403).send({ error: "Sem permissão para este tenant" });
+      }
 
       const failed = await prisma.failedUsage.findMany({
         where: {
@@ -38,53 +42,36 @@ export class FailedUsageController {
         }
       });
 
-
       return reply.send({
         success: true,
         items: failed
       });
-
-
     } catch (error) {
-
       request.log.error(error);
-
       return reply.status(500).send({
         error: "Failed usage list error"
       });
-
     }
   }
 
-
-
-  /**
-   * Retry de uma falha específica
-   */
   async retry(
     request: AuthenticatedRequest,
     reply: FastifyReply
   ) {
-
     try {
+      const actor = request.user;
+      if (!actor) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
 
-      const { id } = request.params as {
-        id: string
-      };
+      const { id } = request.params as { id: string };
 
-
-      const tenantId =
-        request.user?.tenantId ?? request.tenantId;
-
-
-      const failed =
-        await prisma.failedUsage.findFirst({
-          where:{
-            id,
-            tenantId
-          }
-        });
-
+      const failed = await prisma.failedUsage.findFirst({
+        where: {
+          id,
+          ...(actor.role !== "OWNER" ? { tenantId: actor.tenantId } : {})
+        }
+      });
 
       if (!failed) {
         return reply.status(404).send({
@@ -92,145 +79,98 @@ export class FailedUsageController {
         });
       }
 
-
-
       await prisma.failedUsage.update({
-        where:{
-          id: failed.id
-        },
-        data:{
-          status:"PROCESSING",
-          attempts:{
-            increment:1
-          },
-          lastAttemptAt:new Date()
+        where: { id: failed.id },
+        data: {
+          status: "PROCESSING",
+          attempts: { increment: 1 },
+          lastAttemptAt: new Date()
         }
       });
-
-
 
       await usageQueue.add(
         "usage",
         failed.payload,
         {
           attempts: 3,
-          backoff:{
-            type:"exponential",
-            delay:3000
-          }
+          backoff: { type: "exponential", delay: 3000 }
         }
       );
 
-
-
       return reply.status(202).send({
-        success:true,
-        message:"Retry queued",
+        success: true,
+        message: "Retry queued",
         requestId: failed.requestId
       });
-
-
-    } catch(error){
-
+    } catch (error) {
       request.log.error(error);
-
-      return reply.status(500).send({
-        error:"Retry failed"
-      });
-
+      return reply.status(500).send({ error: "Retry failed" });
     }
   }
 
-
-
-
-  /**
-   * Retry de todas as falhas de um tenant
-   */
   async retryTenant(
     request: AuthenticatedRequest,
     reply: FastifyReply
-  ){
-
+  ) {
     try {
-
-
-      const tenantId =
-        (request.params as any).tenantId;
-
-
-
-      const failed =
-        await prisma.failedUsage.findMany({
-          where:{
-            tenantId,
-            status:"PENDING"
-          }
-        });
-
-
-
-      if (!failed.length) {
-
-        return reply.send({
-          success:true,
-          message:"No failed usages found"
-        });
-
+      const actor = request.user;
+      if (!actor) {
+        return reply.status(401).send({ error: "Unauthorized" });
       }
 
+      const paramTenantId = (request.params as any)?.tenantId;
+      const queryTenantId = (request.query as any)?.tenantId;
+      const tenantId = paramTenantId || queryTenantId || actor.tenantId;
 
+      if (!tenantId) {
+        return reply.status(400).send({ error: "Tenant missing" });
+      }
 
-      for(const item of failed){
+      if (actor.role !== "OWNER" && actor.tenantId !== tenantId) {
+        return reply.status(403).send({ error: "Sem permissão para este tenant" });
+      }
 
+      const failed = await prisma.failedUsage.findMany({
+        where: {
+          tenantId,
+          status: "PENDING"
+        }
+      });
 
+      if (!failed.length) {
+        return reply.send({
+          success: true,
+          message: "No failed usages found"
+        });
+      }
+
+      for (const item of failed) {
         await prisma.failedUsage.update({
-          where:{
-            id:item.id
-          },
-          data:{
-            status:"PROCESSING",
-            attempts:{
-              increment:1
-            },
-            lastAttemptAt:new Date()
+          where: { id: item.id },
+          data: {
+            status: "PROCESSING",
+            attempts: { increment: 1 },
+            lastAttemptAt: new Date()
           }
         });
-
-
 
         await usageQueue.add(
           "usage",
           item.payload,
           {
-            attempts:3,
-            backoff:{
-              type:"exponential",
-              delay:3000
-            }
+            attempts: 3,
+            backoff: { type: "exponential", delay: 3000 }
           }
         );
-
       }
 
-
-
       return reply.status(202).send({
-        success:true,
-        total:failed.length
+        success: true,
+        total: failed.length
       });
-
-
-
-    } catch(error){
-
+    } catch (error) {
       request.log.error(error);
-
-
-      return reply.status(500).send({
-        error:"Tenant retry failed"
-      });
-
+      return reply.status(500).send({ error: "Tenant retry failed" });
     }
   }
 

@@ -13,8 +13,20 @@ export async function tenantRoutes(server: FastifyInstance) {
     tenantController.generateApiKey
   );
 
+  server.post(
+    '/api-keys',
+    { preHandler: [authenticate, authorize('MANAGER')] },
+    tenantController.generateApiKey
+  );
+
   server.get(
     '/tenants/:tenantId/api-keys',
+    { preHandler: [authenticate, authorize('MANAGER')] },
+    tenantController.listApiKeys
+  );
+
+  server.get(
+    '/api-keys',
     { preHandler: [authenticate, authorize('MANAGER')] },
     tenantController.listApiKeys
   );
@@ -25,8 +37,20 @@ export async function tenantRoutes(server: FastifyInstance) {
     tenantController.createProviderCredential
   );
 
+  server.post(
+    '/provider-credentials',
+    { preHandler: [authenticate, authorize('MANAGER')] },
+    tenantController.createProviderCredential
+  );
+
   server.get(
     '/tenants/:tenantId/provider-credentials',
+    { preHandler: [authenticate, authorize('MANAGER')] },
+    tenantController.listProviderCredentials
+  );
+
+  server.get(
+    '/provider-credentials',
     { preHandler: [authenticate, authorize('MANAGER')] },
     tenantController.listProviderCredentials
   );

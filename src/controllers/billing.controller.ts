@@ -1,19 +1,43 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { PrismaClient } from '@prisma/client';
+import type { AuthenticatedRequest } from '../types/auth';
 
 const prisma = new PrismaClient();
 
 export class BillingController {
   async list(request: FastifyRequest, reply: FastifyReply) {
-    const tenantId = (request.params as any).tenantId as string;
+    const actor = (request as AuthenticatedRequest).user;
+    const paramTenantId = (request.params as any)?.tenantId;
+    const queryTenantId = (request.query as any)?.tenantId;
+    const tenantId = paramTenantId || queryTenantId || actor?.tenantId;
+
+    if (!tenantId) {
+      return reply.status(400).send({ error: 'tenantId is required' });
+    }
+
+    if (actor && actor.role !== 'OWNER' && actor.tenantId !== tenantId) {
+      return reply.status(403).send({ error: 'Sem permissão para este tenant' });
+    }
+
     const groups = await prisma.billingGroup.findMany({ where: { tenantId }, orderBy: { createdAt: 'desc' } });
     return reply.status(200).send(groups);
   }
 
   async create(request: FastifyRequest, reply: FastifyReply) {
-    const tenantId = (request.params as any).tenantId as string;
+    const actor = (request as AuthenticatedRequest).user;
     const body = request.body as any;
+    const paramTenantId = (request.params as any)?.tenantId;
+    const bodyTenantId = body?.tenantId;
+    const tenantId = paramTenantId || bodyTenantId || actor?.tenantId;
     const name = body?.name;
+
+    if (!tenantId) {
+      return reply.status(400).send({ error: 'tenantId is required' });
+    }
+
+    if (actor && actor.role !== 'OWNER' && actor.tenantId !== tenantId) {
+      return reply.status(403).send({ error: 'Sem permissão para este tenant' });
+    }
 
     if (!name || typeof name !== 'string') {
       return reply.status(400).send({ error: 'name is required' });
@@ -38,9 +62,11 @@ export class BillingController {
   }
 
   async delete(request: FastifyRequest, reply: FastifyReply) {
+    const actor = (request as AuthenticatedRequest).user;
     const params = request.params as any;
     const id = params?.id;
-    const tenantId = params?.tenantId;
+    const paramTenantId = params?.tenantId;
+    const tenantId = paramTenantId || actor?.tenantId;
 
     if (!id || typeof id !== 'string') {
       return reply.status(400).send({ error: 'id is required' });
@@ -50,12 +76,16 @@ export class BillingController {
       const group = await prisma.billingGroup.findFirst({
         where: {
           id,
-          ...(tenantId ? { tenantId } : {})
+          ...(tenantId && actor?.role !== 'OWNER' ? { tenantId } : {})
         }
       });
 
       if (!group) {
         return reply.status(404).send({ error: 'Billing group not found' });
+      }
+
+      if (actor && actor.role !== 'OWNER' && actor.tenantId !== group.tenantId) {
+        return reply.status(403).send({ error: 'Sem permissão para este tenant' });
       }
 
       await prisma.billingGroup.delete({

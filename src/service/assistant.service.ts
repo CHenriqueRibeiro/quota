@@ -190,14 +190,20 @@ class AssistantService {
   async list(
   user: AuthenticatedUser
 ){
+  const scopeWhere: any = {};
+  if (user.role !== 'OWNER' && user.role !== 'MANAGER' && user.scopeId) {
+    scopeWhere.OR = [
+      { scopeId: user.scopeId },
+      { scopeId: null }
+    ];
+  }
 
   const assistants =
     await prisma.assistant.findMany({
 
       where:{
-
-        tenantId:user.tenantId
-
+        tenantId: user.tenantId,
+        ...scopeWhere
       },
 
       select:{

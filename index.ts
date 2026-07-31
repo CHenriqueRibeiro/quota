@@ -41,6 +41,8 @@ const start = async () => {
     await server.register(cors, {
       origin: true,
       credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'x-system-secret'],
     });
 
     await server.register(multipart);

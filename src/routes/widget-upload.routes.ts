@@ -1,10 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import cloudinary from "../service/cloudinary.service";
-
+import { authenticate } from "../middleware/auth.middleware";
 
 export async function widgetUploadRoutes(server: FastifyInstance) {
 
-  server.post("/widget/upload-logo", async (request, reply) => {
+  server.post(
+    "/widget/upload-logo",
+    { preHandler: [authenticate] },
+    async (request, reply) => {
 
     try {
 

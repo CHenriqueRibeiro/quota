@@ -249,76 +249,56 @@ return prisma.scope.delete({
 
 
   async assignUser(
-  tenantId:string,
-  userId:string,
-  scopeId:string|null
-){
-
-
-  const user =
-    await prisma.user.findFirst({
-
-      where:{
-
-        id:userId,
-
-        tenantId
-
-      },
-
-      select:{
-        id:true,
-        tenantId:true
-      }
-
-    });
-
-
-
-  if(!user){
-
-    throw new Error(
-      "Usuário não encontrado ou não pertence ao tenant."
-    );
-
-  }
-
-
-
-
-
-  if(scopeId){
-
-
-    await this.validateScope(
-
-      tenantId,
-
-      scopeId
-
-    );
-
-
-  }
-
-
-
-
-
-  return prisma.user.update({
-
-    where:{
-      id:userId
-    },
-
-    data:{
-      scopeId
+    actorUser: AuthenticatedUser,
+    userId: string,
+    scopeId: string | null
+  ) {
+    if (!userId) {
+      throw new Error("userId é obrigatório.");
     }
 
-  });
+    const targetTenantId = actorUser.tenantId;
 
+    const user = await prisma.user.findFirst({
+      where: {
+        id: userId,
+        ...(actorUser.role !== "OWNER" ? { tenantId: targetTenantId } : {})
+      },
+      select: {
+        id: true,
+        tenantId: true
+      }
+    });
 
-}
+    if (!user) {
+      throw new Error("Usuário não encontrado ou não pertence ao tenant.");
+    }
+
+    if (scopeId) {
+      const scope = await prisma.scope.findFirst({
+        where: {
+          id: scopeId,
+          tenantId: user.tenantId
+        }
+      });
+
+      if (!scope) {
+        throw new Error("Scope não encontrado ou não pertence ao mesmo tenant do usuário.");
+      }
+    }
+
+    return prisma.user.update({
+      where: {
+        id: userId
+      },
+      data: {
+        scopeId: scopeId || null
+      },
+      include: {
+        scope: true
+      }
+    });
+  }
 
 
 

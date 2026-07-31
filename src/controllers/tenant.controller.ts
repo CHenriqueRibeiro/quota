@@ -45,188 +45,109 @@ export class TenantController {
         details: error instanceof Error ? error.message : error
       });
     }
-  }
-
- async generateApiKey(request: AuthenticatedRequest, reply: FastifyReply) {
-
-  try {
-
-    const actor = request.user;
-
-    const {
-      name,
-      providerCredentialId,
-      allowedModels
-    } = request.body as {
-      name?: string;
-      providerCredentialId: string;
-      allowedModels?: string[];
-    };
-
-
-    const { tenantId } = request.params as {
-      tenantId: string;
-    };
-
-
-    const resolvedTenantId = tenantId?.trim();
-
-
-    if (!resolvedTenantId) {
-      return reply.status(400).send({
-        error: 'tenantId é obrigatório'
-      });
-    }
-
-
-    if (!actor?.tenantId || actor.tenantId !== resolvedTenantId) {
-      return reply.status(403).send({
-        error: 'Você não tem permissão para gerar API keys para este tenant'
-      });
-    }
-
-    const tenant = await prisma.tenant.findUnique({
-      where:{
-        id: resolvedTenantId
-      }
-    });
-
-
-    if (!tenant) {
-      return reply.status(404).send({
-        error:'Ambiente não encontrado'
-      });
-    }
-
-    const PLAN_API_KEY_LIMITS = {
-  STARTER: 3,
-  PRO: 10,
-  ENTERPRISE: 30
-} as const;
-
-
-    const currentKeys = await prisma.apiKey.count({
-
-      where:{
-        tenantId: resolvedTenantId
-      }
-
-    });
-
-
-    const maxKeys = PLAN_API_KEY_LIMITS[tenant.plan as keyof typeof PLAN_API_KEY_LIMITS];
-
-
-    if(currentKeys >= maxKeys){
-
-      return reply.status(400).send({
-
-        error:`Seu plano ${tenant.plan} permite apenas ${maxKeys} API keys`
-
-      });
-
-    }
-
-    const credential = await prisma.providerCredential.findFirst({
-
-      where:{
-        id: providerCredentialId,
-        tenantId: resolvedTenantId,
-        isActive:true
-      }
-
-    });
-
-
-    if(!credential){
-
-      return reply.status(400).send({
-
-        error:'Provider credential inválida ou não pertence ao tenant'
-
-      });
-
-    }
-
-    const apiKeyString =
-      `quota_live_${crypto.randomBytes(24).toString('hex')}`;
-
-
-
-    const apiKey = await prisma.apiKey.create({
-
-      data:{
-
-        key: apiKeyString,
-
-        name: name?.trim() || 'default',
-
-        tenantId: resolvedTenantId,
-
-        provider: credential.provider,
-
-        providerCredentialId: credential.id,
-
-        allowedModels,
-
-      }
-
-    });
-
-
-
-    return reply.status(201).send({
-
-      message:'API key criada com sucesso',
-
-      apiKey:{
-
-        id: apiKey.id,
-
-        key: apiKey.key,
-
-        name: apiKey.name,
-
-        provider: apiKey.provider,
-
-        allowedModels: apiKey.allowedModels,
-
-        isActive: apiKey.isActive
-
-      }
-
-    });
-
-
-
-  } catch(error){
-
-    request.log.error(error);
-
-
-    return reply.status(400).send({
-
-      error:'Erro ao criar API key',
-
-      details: error instanceof Error ? error.message : error
-
-    });
-
-  }
-
-}
-
-  async listApiKeys(request: AuthenticatedRequest, reply: FastifyReply) {
+  }  async generateApiKey(request: AuthenticatedRequest, reply: FastifyReply) {
     try {
       const actor = request.user;
-      const { tenantId } = request.params as { tenantId: string };
-      const resolvedTenantId = tenantId?.trim();
+      const body = (request.body as any) || {};
+      const { name, providerCredentialId, allowedModels } = body;
+      const paramTenantId = (request.params as any)?.tenantId;
+      const queryTenantId = (request.query as any)?.tenantId;
+      const bodyTenantId = body?.tenantId;
+      const resolvedTenantId = (paramTenantId || queryTenantId || bodyTenantId || actor?.tenantId)?.trim();
 
       if (!resolvedTenantId) {
         return reply.status(400).send({ error: 'tenantId é obrigatório' });
       }
 
-      if (!actor?.tenantId || actor.tenantId !== resolvedTenantId) {
+      if (actor && actor.role !== 'OWNER' && actor.tenantId !== resolvedTenantId) {
+        return reply.status(403).send({ error: 'Você não tem permissão para gerar API keys para este tenant' });
+      }
+
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: resolvedTenantId }
+      });
+
+      if (!tenant) {
+        return reply.status(404).send({ error: 'Ambiente não encontrado' });
+      }
+
+      const PLAN_API_KEY_LIMITS = {
+        STARTER: 3,
+        PRO: 10,
+        ENTERPRISE: 30
+      } as const;
+
+      const currentKeys = await prisma.apiKey.count({
+        where: { tenantId: resolvedTenantId }
+      });
+
+      const maxKeys = PLAN_API_KEY_LIMITS[tenant.plan as keyof typeof PLAN_API_KEY_LIMITS];
+
+      if (currentKeys >= maxKeys) {
+        return reply.status(400).send({
+          error: `Seu plano ${tenant.plan} permite apenas ${maxKeys} API keys`
+        });
+      }
+
+      const credential = await prisma.providerCredential.findFirst({
+        where: {
+          id: providerCredentialId,
+          tenantId: resolvedTenantId,
+          isActive: true
+        }
+      });
+
+      if (!credential) {
+        return reply.status(400).send({
+          error: 'Provider credential inválida ou não pertence ao tenant'
+        });
+      }
+
+      const apiKeyString = `quota_live_${crypto.randomBytes(24).toString('hex')}`;
+
+      const apiKey = await prisma.apiKey.create({
+        data: {
+          key: apiKeyString,
+          name: name?.trim() || 'default',
+          tenantId: resolvedTenantId,
+          provider: credential.provider,
+          providerCredentialId: credential.id,
+          allowedModels,
+        }
+      });
+
+      return reply.status(201).send({
+        message: 'API key criada com sucesso',
+        apiKey: {
+          id: apiKey.id,
+          key: apiKey.key,
+          name: apiKey.name,
+          provider: apiKey.provider,
+          allowedModels: apiKey.allowedModels,
+          isActive: apiKey.isActive
+        }
+      });
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(400).send({
+        error: 'Erro ao criar API key',
+        details: error instanceof Error ? error.message : error
+      });
+    }
+  }
+
+  async listApiKeys(request: AuthenticatedRequest, reply: FastifyReply) {
+    try {
+      const actor = request.user;
+      const paramTenantId = (request.params as any)?.tenantId;
+      const queryTenantId = (request.query as any)?.tenantId;
+      const resolvedTenantId = (paramTenantId || queryTenantId || actor?.tenantId)?.trim();
+
+      if (!resolvedTenantId) {
+        return reply.status(400).send({ error: 'tenantId é obrigatório' });
+      }
+
+      if (actor && actor.role !== 'OWNER' && actor.tenantId !== resolvedTenantId) {
         return reply.status(403).send({ error: 'Você não tem permissão para listar API keys deste tenant' });
       }
 
@@ -245,20 +166,18 @@ export class TenantController {
   async createProviderCredential(request: AuthenticatedRequest, reply: FastifyReply) {
     try {
       const actor = request.user;
-      const { provider, apiKey, baseUrl, isActive } = request.body as {
-        provider?: SupportedProvider;
-        apiKey?: string;
-        baseUrl?: string;
-        isActive?: boolean;
-      };
-      const { tenantId } = request.params as { tenantId: string };
-      const resolvedTenantId = tenantId?.trim();
+      const body = (request.body as any) || {};
+      const { provider, apiKey, baseUrl, isActive } = body;
+      const paramTenantId = (request.params as any)?.tenantId;
+      const queryTenantId = (request.query as any)?.tenantId;
+      const bodyTenantId = body?.tenantId;
+      const resolvedTenantId = (paramTenantId || queryTenantId || bodyTenantId || actor?.tenantId)?.trim();
 
       if (!resolvedTenantId) {
         return reply.status(400).send({ error: 'tenantId é obrigatório' });
       }
 
-      if (!actor?.tenantId || actor.tenantId !== resolvedTenantId) {
+      if (actor && actor.role !== 'OWNER' && actor.tenantId !== resolvedTenantId) {
         return reply.status(403).send({ error: 'Você não tem permissão para criar credenciais deste tenant' });
       }
 
@@ -311,14 +230,15 @@ export class TenantController {
   async listProviderCredentials(request: AuthenticatedRequest, reply: FastifyReply) {
     try {
       const actor = request.user;
-      const { tenantId } = request.params as { tenantId: string };
-      const resolvedTenantId = tenantId?.trim();
+      const paramTenantId = (request.params as any)?.tenantId;
+      const queryTenantId = (request.query as any)?.tenantId;
+      const resolvedTenantId = (paramTenantId || queryTenantId || actor?.tenantId)?.trim();
 
       if (!resolvedTenantId) {
         return reply.status(400).send({ error: 'tenantId é obrigatório' });
       }
 
-      if (!actor?.tenantId || actor.tenantId !== resolvedTenantId) {
+      if (actor && actor.role !== 'OWNER' && actor.tenantId !== resolvedTenantId) {
         return reply.status(403).send({ error: 'Você não tem permissão para listar credenciais deste tenant' });
       }
 
