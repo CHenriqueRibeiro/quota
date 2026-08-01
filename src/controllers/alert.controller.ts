@@ -28,7 +28,7 @@ class AlertController {
       }
 
       const {
-        type,
+        type: rawType,
         period,
         threshold,
         email,
@@ -39,7 +39,19 @@ class AlertController {
         billingGroupId
       } = body;
 
-      if (!targetTenantId || !type || !period || !threshold || !email) {
+      const typeMap: Record<string, string> = {
+        COST_THRESHOLD: "COST",
+        TOKEN_THRESHOLD: "TOKENS",
+        ERROR_RATE: "ERRORS",
+        LATENCY: "LATENCY",
+        COST: "COST",
+        TOKENS: "TOKENS",
+        ERRORS: "ERRORS"
+      };
+
+      const type = typeMap[rawType] || rawType;
+
+      if (!targetTenantId || !type || !period || threshold === undefined || !email) {
         return reply.status(400).send({
           error: "tenantId, type, period, threshold e email são obrigatórios"
         });
@@ -48,15 +60,15 @@ class AlertController {
       const alert = await prisma.alertConfig.create({
         data: {
           tenantId: targetTenantId,
-          type,
-          period,
-          threshold,
+          type: type as any,
+          period: period as any,
+          threshold: Number(threshold),
           email,
-          provider,
-          model,
-          project,
-          agent,
-          billingGroupId
+          provider: provider ? (String(provider).trim() as any) : null,
+          model: model ? String(model).trim() : null,
+          project: project ? String(project).trim() : null,
+          agent: agent ? String(agent).trim() : null,
+          billingGroupId: billingGroupId || null
         }
       });
 
@@ -64,9 +76,9 @@ class AlertController {
         message: "Alerta criado com sucesso",
         alert
       });
-    } catch (error) {
+    } catch (error: any) {
       request.log.error(error);
-      return reply.status(400).send({ error: "Erro ao criar alerta" });
+      return reply.status(400).send({ error: error?.message || "Erro ao criar alerta" });
     }
   }
 
@@ -97,7 +109,13 @@ class AlertController {
         orderBy: { createdAt: "desc" }
       });
 
-      return reply.send(alerts);
+      const items = alerts.map(alert => ({
+        ...alert,
+        type: alert.type === "COST" ? "COST_THRESHOLD" : alert.type === "TOKENS" ? "TOKEN_THRESHOLD" : alert.type === "ERRORS" ? "ERROR_RATE" : alert.type,
+        rawType: alert.type
+      }));
+
+      return reply.send(items);
     } catch (error) {
       request.log.error(error);
       return reply.status(400).send({ error: "Erro ao listar alertas" });
@@ -207,7 +225,116 @@ class AlertController {
     }
   }
 
-}
+  async update(
+    request: AuthenticatedRequest,
+    reply: FastifyReply
+  ) {
+    try {
+      const actor = request.user;
+      if (!actor) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
 
+      const { id } = (request.params as any) || {};
+      if (!id) {
+        return reply.status(400).send({ error: "ID do alerta é obrigatório" });
+      }
+
+      const existing = await prisma.alertConfig.findUnique({
+        where: { id }
+      });
+
+      if (!existing) {
+        return reply.status(404).send({ error: "Alerta não encontrado" });
+      }
+
+      if (actor.role !== "OWNER" && actor.tenantId !== existing.tenantId) {
+        return reply.status(403).send({ error: "Sem permissão para este tenant" });
+      }
+
+      const body = (request.body as any) || {};
+      const dataToUpdate: any = {};
+
+      if (body.type) {
+        const typeMap: Record<string, string> = {
+          COST_THRESHOLD: "COST",
+          TOKEN_THRESHOLD: "TOKENS",
+          ERROR_RATE: "ERRORS",
+          LATENCY: "LATENCY",
+          COST: "COST",
+          TOKENS: "TOKENS",
+          ERRORS: "ERRORS"
+        };
+        dataToUpdate.type = typeMap[body.type] || body.type;
+      }
+
+      if (body.period !== undefined) dataToUpdate.period = body.period;
+      if (body.threshold !== undefined) dataToUpdate.threshold = Number(body.threshold);
+      if (body.email !== undefined) dataToUpdate.email = String(body.email).trim();
+      if (body.enabled !== undefined) dataToUpdate.enabled = Boolean(body.enabled);
+      if (body.provider !== undefined) dataToUpdate.provider = body.provider ? (String(body.provider).trim() as any) : null;
+      if (body.model !== undefined) dataToUpdate.model = body.model ? String(body.model).trim() : null;
+      if (body.project !== undefined) dataToUpdate.project = body.project ? String(body.project).trim() : null;
+      if (body.agent !== undefined) dataToUpdate.agent = body.agent ? String(body.agent).trim() : null;
+      if (body.billingGroupId !== undefined) dataToUpdate.billingGroupId = body.billingGroupId || null;
+
+      const updated = await prisma.alertConfig.update({
+        where: { id },
+        data: dataToUpdate
+      });
+
+      return reply.send({
+        message: "Alerta atualizado com sucesso",
+        alert: {
+          ...updated,
+          type: updated.type === "COST" ? "COST_THRESHOLD" : updated.type === "TOKENS" ? "TOKEN_THRESHOLD" : updated.type === "ERRORS" ? "ERROR_RATE" : updated.type,
+          rawType: updated.type
+        }
+      });
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.status(400).send({ error: error?.message || "Erro ao atualizar alerta" });
+    }
+  }
+
+  async delete(
+    request: AuthenticatedRequest,
+    reply: FastifyReply
+  ) {
+    try {
+      const actor = request.user;
+      if (!actor) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+
+      const { id } = (request.params as any) || {};
+      if (!id) {
+        return reply.status(400).send({ error: "ID do alerta é obrigatório" });
+      }
+
+      const existing = await prisma.alertConfig.findUnique({
+        where: { id }
+      });
+
+      if (!existing) {
+        return reply.status(404).send({ error: "Alerta não encontrado" });
+      }
+
+      if (actor.role !== "OWNER" && actor.tenantId !== existing.tenantId) {
+        return reply.status(403).send({ error: "Sem permissão para este tenant" });
+      }
+
+      await prisma.alertConfig.delete({
+        where: { id }
+      });
+
+      return reply.send({ message: "Alerta excluído com sucesso" });
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.status(400).send({ error: error?.message || "Erro ao excluir alerta" });
+    }
+  }
+
+}
 
 export default new AlertController();

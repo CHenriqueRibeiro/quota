@@ -766,6 +766,68 @@ Upload de logo em formato imagem para o widget via Multipart Form.
 
 ---
 
+### 8. Alerts (Configuração e Notificações de Alerta)
+
+#### `POST /alerts`
+Cria uma nova regra de alerta para o tenant.
+- **Autenticação**: `Bearer <token>` (Requer `MANAGER` ou superior)
+- **Body (JSON)**:
+  - `type` (string, **Obrigatório**): Tipo de alerta (`COST_THRESHOLD` | `TOKEN_THRESHOLD` | `ERROR_RATE` | `LATENCY` ou `COST` | `TOKENS` | `ERRORS`).
+  - `period` (string, **Obrigatório**): Frequência (`DAILY` | `MONTHLY` | `REQUEST`).
+  - `threshold` (number, **Obrigatório**): Limite para disparo do alerta.
+  - `email` (string, **Obrigatório**): E-mail de destino da notificação.
+  - `provider` (string, **Opcional**)
+  - `model` (string, **Opcional**)
+  - `project` (string, **Opcional**)
+  - `agent` (string, **Opcional**)
+  - `billingGroupId` (string, **Opcional**)
+- **Resposta (201 Created)**: `{ "message": "Alerta criado com sucesso", "alert": AlertConfig }`
+
+#### `GET /alerts` ou `GET /alerts/tenants/:tenantId`
+Lista todas as regras de alertas configuradas no tenant.
+- **Autenticação**: `Bearer <token>` (Requer `MANAGER` ou superior)
+- **Resposta (200 OK)**: Array com regras de alerta.
+
+#### `PUT /alerts/:id`
+Atualiza os dados ou limites de uma regra de alerta existente.
+- **Autenticação**: `Bearer <token>` (Requer `MANAGER` ou superior)
+- **Path Params**:
+  - `id` (string, **Obrigatório**): ID do alerta.
+- **Body (JSON)** (Campos opcionais): `type`, `period`, `threshold`, `email`, `enabled`, `provider`, `model`, `project`, `agent`, `billingGroupId`.
+- **Resposta (200 OK)**: `{ "message": "Alerta atualizado com sucesso", "alert": AlertConfig }`
+
+#### `DELETE /alerts/:id`
+Exclui uma regra de alerta do tenant.
+- **Autenticação**: `Bearer <token>` (Requer `MANAGER` ou superior)
+- **Path Params**:
+  - `id` (string, **Obrigatório**): ID do alerta.
+- **Resposta (200 OK)**: `{ "message": "Alerta excluído com sucesso" }`
+
+#### `POST /alerts/process` ou `POST /alerts/process/:tenantId`
+Executa manualmente a verificação das regras de alertas do tenant e dispara notificações.
+- **Autenticação**: `Bearer <token>` (Requer `MANAGER` ou superior)
+
+#### `GET /alerts/notifications` ou `GET /alerts/notifications/:tenantId`
+Lista o histórico de notificações geradas pelos alertas.
+- **Autenticação**: `Bearer <token>` (Requer `MANAGER` ou superior)
+
+---
+
+### 9. LLM Pricing (Tabela de Preços Globais de Modelos de IA)
+
+#### `GET /llm-prices`
+Retorna a tabela de preços vigentes de modelos LLM consumida de `llm-prices.com`, filtrada para os provedores suportados (`openai`, `anthropic`, `google`, `groq`, `mistral`).
+- **Autenticação**: `Bearer <token>`
+- **Frequência de Atualização**: Automática a cada 5 dias.
+- **Resposta (200 OK)**: Objeto contendo `updatedAt`, `lastSyncTimestamp`, `nextSyncDueDate`, `totalModels`, `supportedVendors` e a lista `prices` com tarifas de Input, Output e Input Cached em USD por 1M tokens.
+
+#### `POST /llm-prices/sync`
+Força a sincronização imediata dos preços de modelos diretamente do repositório público `llm-prices.com`.
+- **Autenticação**: `Bearer <token>` (Requer `MANAGER` ou superior)
+- **Resposta (200 OK)**: Dados atualizados dos preços.
+
+---
+
 ### 8. Widget Chat & Upload (Interação do Usuário Final)
 
 #### `POST /widget/chat/select-topic`

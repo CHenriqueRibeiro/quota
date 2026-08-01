@@ -111,6 +111,9 @@ export class CollectorController {
         latencyMs:
           Number(body.latencyMs ?? 0),
 
+        estimatedCost:
+          Number(body.estimatedCost ?? body.estimatedCostUsd ?? 0),
+
 
         statusCode:
           Number(body.statusCode ?? 200),

@@ -26,6 +26,8 @@ import { widgetUploadRoutes } from "./src/routes/widget-upload.routes";
 import { projectManagementRoutes } from "./src/routes/project-management.routes";
 import { agentManagementRoutes } from "./src/routes/agent-management.routes";
 import { budgetRoutes } from "./src/routes/budget.routes";
+import { llmPricingRoutes } from "./src/routes/llm-pricing.routes";
+import llmPricingService from "./src/service/llm-pricing.service";
 
 
 
@@ -74,6 +76,12 @@ const start = async () => {
     await server.register(projectManagementRoutes);
     await server.register(agentManagementRoutes);
     await server.register(budgetRoutes);
+    await server.register(llmPricingRoutes);
+
+    // Inicializa / Garante sincronização dos preços das LLMs (llm-prices.com) a cada 5 dias
+    llmPricingService.ensureFreshPrices().catch((err) => {
+      server.log.error('Erro ao sincronizar preços de LLM na inicialização:', err);
+    });
 
 
     await prisma.$connect();

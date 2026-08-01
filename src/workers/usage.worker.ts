@@ -2,6 +2,7 @@ import { Worker } from "bullmq";
 import { PrismaClient, ProviderName } from "@prisma/client";
 import Redis from "ioredis";
 import { processAlerts } from "../service/alert-engine.service";
+import llmPricingService from "../service/llm-pricing.service";
 
 const prisma = new PrismaClient();
 
@@ -52,7 +53,16 @@ const worker = new Worker(
       data.totalTokens ?? promptTokens + completionTokens
     );
 
-    const estimatedCost = Number(data.estimatedCost ?? 0);
+    let estimatedCost = Number(data.estimatedCost ?? 0);
+    if (estimatedCost <= 0 && (promptTokens > 0 || completionTokens > 0)) {
+      estimatedCost = llmPricingService.calculateCost({
+        provider,
+        model,
+        promptTokens,
+        completionTokens,
+        cachedTokens: Number(data.cachedTokens ?? 0)
+      });
+    }
 
     if (!tenantId) {
       console.error("❌ tenantId não recebido");

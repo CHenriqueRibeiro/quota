@@ -51,4 +51,16 @@ export async function alertRoutes(server: FastifyInstance) {
     { preHandler: [authenticate, authorize("MANAGER")] },
     AlertController.notifications
   );
+
+  server.put(
+    "/alerts/:id",
+    { preHandler: [authenticate, authorize("MANAGER")] },
+    AlertController.update
+  );
+
+  server.delete(
+    "/alerts/:id",
+    { preHandler: [authenticate, authorize("MANAGER")] },
+    AlertController.delete
+  );
 }
