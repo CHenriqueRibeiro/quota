@@ -269,7 +269,88 @@ async publicInfo(
   }
 
 }
-}
 
+  async list(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const actor = (request as any).user;
+      if (!actor) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+
+      const paramTenantId = (request.params as any)?.tenantId;
+      const queryTenantId = (request.query as any)?.tenantId;
+      const tenantId = paramTenantId || queryTenantId || actor.tenantId;
+
+      if (!tenantId) {
+        return reply.status(400).send({ error: "tenantId é obrigatório" });
+      }
+
+      if (actor.role !== "OWNER" && actor.tenantId !== tenantId) {
+        return reply.status(403).send({ error: "Sem permissão para este tenant" });
+      }
+
+      const widgets = await widgetService.list(tenantId);
+      return reply.status(200).send({ data: widgets });
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.status(500).send({ error: "Erro ao listar widgets" });
+    }
+  }
+
+  async getById(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const actor = (request as any).user;
+      if (!actor) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+
+      const { id } = (request.params as any) || {};
+      const widget = await widgetService.getById(actor.tenantId, id);
+      return reply.status(200).send({ data: widget });
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.status(404).send({ error: error.message || "Widget não encontrado" });
+    }
+  }
+
+  async update(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const actor = (request as any).user;
+      if (!actor) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+
+      const { id } = (request.params as any) || {};
+      const body = (request.body as any) || {};
+
+      const widget = await widgetService.update({
+        tenantId: actor.tenantId,
+        widgetId: id,
+        ...body
+      });
+
+      return reply.status(200).send({ data: widget });
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.status(400).send({ error: error.message || "Erro ao atualizar widget" });
+    }
+  }
+
+  async delete(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const actor = (request as any).user;
+      if (!actor) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+
+      const { id } = (request.params as any) || {};
+      const result = await widgetService.delete(actor.tenantId, id);
+      return reply.status(200).send(result);
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.status(400).send({ error: error.message || "Erro ao excluir widget" });
+    }
+  }
+}
 
 export default new WidgetController();

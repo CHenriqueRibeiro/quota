@@ -2,6 +2,9 @@ import type { FastifyReply } from 'fastify';
 import type { AuthenticatedRequest } from '../types/auth';
 import { usageQueue } from '../lib/queue';
 import { randomUUID } from 'node:crypto';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export class CollectorController {
   async execute(
@@ -44,6 +47,31 @@ export class CollectorController {
         return reply.status(400).send({
           error: 'provider and model are required'
         });
+      }
+
+      const project = body.metadata?.project ?? body.project;
+      const agent = body.metadata?.agent ?? body.agent;
+
+      if (project) {
+        const dbProject = await (prisma as any).project.findFirst({
+          where: { tenantId, name: project }
+        });
+        if (!dbProject) {
+          return reply.status(400).send({
+            error: `Projeto '${project}' não está cadastrado no tenant.`
+          });
+        }
+      }
+
+      if (agent) {
+        const dbAgent = await (prisma as any).agent.findFirst({
+          where: { tenantId, name: agent }
+        });
+        if (!dbAgent) {
+          return reply.status(400).send({
+            error: `Agente '${agent}' não está cadastrado no tenant.`
+          });
+        }
       }
 
 

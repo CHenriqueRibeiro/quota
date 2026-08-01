@@ -448,10 +448,88 @@ Exclui um grupo de faturamento do tenant.
   - `id` (string, **Obrigatório**): ID do grupo de faturamento a ser excluído.
 - **Resposta (200 OK)**:
   ```json
-  {
-    "message": "Billing group deleted successfully"
-  }
+  { "message": "Billing group deleted successfully" }
   ```
+
+---
+
+### 5. Projects (Gerenciamento de Projetos)
+
+#### `GET /projects` ou `GET /tenants/:tenantId/projects`
+Lista todos os projetos cadastrados no tenant.
+- **Autenticação**: `Bearer <token>`
+- **Resposta (200 OK)**: Array de objetos `Project`.
+
+#### `POST /projects` ou `POST /tenants/:tenantId/projects`
+Cadastra um novo projeto no tenant.
+- **Autenticação**: `Bearer <token>` (Requer `MANAGER` ou superior)
+- **Body (JSON)**:
+  - `name` (string, **Obrigatório**): Nome único do projeto.
+  - `description` (string, **Opcional**): Descrição do projeto.
+- **Resposta (201 Created)**: Objeto `Project` criado.
+
+#### `DELETE /projects/:id` ou `DELETE /tenants/:tenantId/projects/:id`
+Exclui um projeto do tenant.
+- **Autenticação**: `Bearer <token>` (Requer `MANAGER` ou superior)
+- **Resposta (200 OK)**: `{ "message": "Projeto excluído com sucesso" }`
+
+---
+
+### 6. Agents (Gerenciamento de Agentes)
+
+#### `GET /agents-management` ou `GET /tenants/:tenantId/agents-management`
+Lista todos os agentes cadastrados no tenant.
+- **Autenticação**: `Bearer <token>`
+- **Resposta (200 OK)**: Array de objetos `Agent`.
+
+#### `POST /agents-management` ou `POST /tenants/:tenantId/agents-management`
+Cadastra um novo agente no tenant.
+- **Autenticação**: `Bearer <token>` (Requer `MANAGER` ou superior)
+- **Body (JSON)**:
+  - `name` (string, **Obrigatório**): Nome único do agente.
+  - `description` (string, **Opcional**): Descrição do agente.
+- **Resposta (201 Created)**: Objeto `Agent` criado.
+
+#### `DELETE /agents-management/:id` ou `DELETE /tenants/:tenantId/agents-management/:id`
+Exclui um agente do tenant.
+- **Autenticação**: `Bearer <token>` (Requer `MANAGER` ou superior)
+- **Resposta (200 OK)**: `{ "message": "Agente excluído com sucesso" }`
+
+---
+
+### 7. Budgets (Gerenciamento de Orçamentos)
+
+#### `GET /budgets` ou `GET /tenants/:tenantId/budgets`
+Lista todos os orçamentos do tenant calculando dinamicamente o valor consumido, saldo restante e porcentagem de uso no período.
+- **Autenticação**: `Bearer <token>`
+- **Resposta (200 OK)**: Array com objetos `Budget` enriquecidos com métricas de consumo (`used`, `remaining`, `usagePercentage`, `status`).
+
+#### `POST /budgets` ou `POST /tenants/:tenantId/budgets`
+Cria um novo orçamento financeiro no tenant.
+- **Autenticação**: `Bearer <token>` (Requer `MANAGER` ou superior)
+- **Body (JSON)**:
+  - `limit` (number, **Obrigatório**): Valor limite financeiro (ex: `50.00`).
+  - `period` (string, **Opcional**): Período do orçamento (`MONTHLY` | `DAILY`). Padrão: `MONTHLY`.
+  - `billingGroupId` (string, **Opcional**): ID do grupo de faturamento a ser restringido.
+  - `project` (string, **Opcional**): Nome do projeto a ser restringido.
+  - `agent` (string, **Opcional**): Nome do agente a ser restringido.
+- **Resposta (201 Created)**: Objeto `Budget` criado.
+
+#### `PUT /budgets/:id` ou `PUT /tenants/:tenantId/budgets/:id`
+Atualiza um orçamento existente.
+- **Autenticação**: `Bearer <token>` (Requer `MANAGER` ou superior)
+- **Body (JSON)** (Campos opcionais):
+  - `limit` (number, **Opcional**)
+  - `period` (string, **Opcional**)
+  - `billingGroupId` (string, **Opcional**)
+  - `project` (string, **Opcional**)
+  - `agent` (string, **Opcional**)
+- **Resposta (200 OK)**: Objeto `Budget` atualizado.
+
+#### `DELETE /budgets/:id` ou `DELETE /tenants/:tenantId/budgets/:id`
+Exclui um orçamento do tenant.
+- **Autenticação**: `Bearer <token>` (Requer `MANAGER` ou superior)
+- **Resposta (200 OK)**: `{ "message": "Orçamento excluído com sucesso" }`
 
 ---
 
@@ -622,6 +700,42 @@ Configura um novo Widget para um assistente de IA.
   - `primaryColor` (string, **Opcional**): Cor primária em formato Hex.
   - `welcomeMessage` (string, **Opcional**): Mensagem de boas-vindas.
 - **Resposta (201 Created)**: `{ "data": Widget }` (inclui a `publicKey`).
+
+#### `GET /widgets` ou `GET /tenants/:tenantId/widgets`
+Lista todos os widgets cadastrados no tenant.
+- **Autenticação**: `Bearer <token>`
+- **Resposta (200 OK)**: `{ "data": Array<Widget> }`
+
+#### `GET /widgets/:id`
+Busca os detalhes de um widget específico por ID (incluindo assistente e tópicos).
+- **Autenticação**: `Bearer <token>`
+- **Path Params**:
+  - `id` (string, **Obrigatório**): ID do widget.
+- **Resposta (200 OK)**: `{ "data": Widget }`
+
+#### `PUT /widgets/:id`
+Atualiza as configurações de um widget existente.
+- **Autenticação**: `Bearer <token>`
+- **Path Params**:
+  - `id` (string, **Obrigatório**): ID do widget.
+- **Body (JSON)** (Campos opcionais):
+  - `name` (string, **Opcional**)
+  - `assistantId` (string, **Opcional**)
+  - `allowedDomains` (array de strings, **Opcional**)
+  - `securityLevel` (string, **Opcional**)
+  - `rateLimit` (number, **Opcional**)
+  - `primaryColor` (string, **Opcional**)
+  - `welcomeMessage` (string, **Opcional**)
+  - `active` (boolean, **Opcional**)
+  - `logo` (string, **Opcional**)
+- **Resposta (200 OK)**: `{ "data": Widget }`
+
+#### `DELETE /widgets/:id`
+Exclui um widget por ID.
+- **Autenticação**: `Bearer <token>`
+- **Path Params**:
+  - `id` (string, **Obrigatório**): ID do widget.
+- **Resposta (200 OK)**: `{ "message": "Widget excluído com sucesso" }`
 
 #### `GET /widget/public/:publicKey`
 Obtém os dados visuais públicos do widget sem autenticação.

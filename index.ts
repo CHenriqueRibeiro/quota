@@ -23,6 +23,9 @@ import { topicRoutes } from './src/routes/topic.routes';
 import { widgetRoutes } from "./src/routes/widget.routes";
 import { widgetChatRoutes } from "./src/routes/widget-chat.routes";
 import { widgetUploadRoutes } from "./src/routes/widget-upload.routes";
+import { projectManagementRoutes } from "./src/routes/project-management.routes";
+import { agentManagementRoutes } from "./src/routes/agent-management.routes";
+import { budgetRoutes } from "./src/routes/budget.routes";
 
 
 
@@ -68,6 +71,9 @@ const start = async () => {
     await server.register(widgetRoutes);
     await server.register(widgetChatRoutes);
     await server.register(widgetUploadRoutes);
+    await server.register(projectManagementRoutes);
+    await server.register(agentManagementRoutes);
+    await server.register(budgetRoutes);
 
 
     await prisma.$connect();

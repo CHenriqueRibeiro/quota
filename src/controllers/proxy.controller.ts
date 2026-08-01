@@ -71,6 +71,28 @@ if (!tenantId) {
   });
 }
 
+if (context.project) {
+  const dbProject = await (prisma as any).project.findFirst({
+    where: { tenantId, name: context.project }
+  });
+  if (!dbProject) {
+    return reply.status(400).send({
+      error: `Projeto '${context.project}' não está cadastrado no tenant.`
+    });
+  }
+}
+
+if (context.agent) {
+  const dbAgent = await (prisma as any).agent.findFirst({
+    where: { tenantId, name: context.agent }
+  });
+  if (!dbAgent) {
+    return reply.status(400).send({
+      error: `Agente '${context.agent}' não está cadastrado no tenant.`
+    });
+  }
+}
+
     if (!SUPPORTED_PROVIDERS.some(item => item.key === quotaApiKey.provider)) {
  return reply.status(400).send({
    error:"Provider da API Key inválido"

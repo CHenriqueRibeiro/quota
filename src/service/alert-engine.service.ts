@@ -249,6 +249,63 @@ async function checkLatencyAlert(alert: any) {
 
 
 
+async function checkBudgets(tenantId: string) {
+  const budgets = await prisma.budget.findMany({
+    where: { tenantId }
+  });
+
+  if (!budgets || budgets.length === 0) return;
+
+  const costAlerts = await prisma.alertConfig.findMany({
+    where: { tenantId, type: "COST", enabled: true }
+  });
+
+  for (const budget of budgets) {
+    const startDate = getPeriodDate(budget.period as any);
+    const where: any = {
+      tenantId,
+      createdAt: { gte: startDate }
+    };
+
+    if (budget.billingGroupId) where.billingGroupId = budget.billingGroupId;
+    if (budget.project) where.project = budget.project;
+    if (budget.agent) where.agent = budget.agent;
+
+    const result = await prisma.usageLog.aggregate({
+      where,
+      _sum: { estimatedCost: true }
+    });
+
+    const cost = Number(result._sum.estimatedCost ?? 0);
+    const limit = Number(budget.limit);
+    const targetName = budget.project
+      ? `Projeto ${budget.project}`
+      : budget.agent
+      ? `Agente ${budget.agent}`
+      : "Global";
+
+    if (limit > 0 && cost >= limit) {
+      const targetAlert = costAlerts[0];
+      if (targetAlert) {
+        await triggerAlert({
+          alertConfigId: targetAlert.id,
+          title: `Orçamento Estourado (${targetName})`,
+          message: `O consumo de $${cost.toFixed(2)} ultrapassou o orçamento limite de $${limit.toFixed(2)}.`
+        });
+      }
+    } else if (limit > 0 && cost >= limit * 0.8) {
+      const targetAlert = costAlerts[0];
+      if (targetAlert) {
+        await triggerAlert({
+          alertConfigId: targetAlert.id,
+          title: `Alerta de Orçamento 80% (${targetName})`,
+          message: `O consumo de $${cost.toFixed(2)} atingiu 80% do orçamento limite de $${limit.toFixed(2)}.`
+        });
+      }
+    }
+  }
+}
+
 export async function processAlerts(
   tenantId:string
 ) {
@@ -306,5 +363,7 @@ export async function processAlerts(
     }
 
   }
+
+  await checkBudgets(tenantId);
 
 }

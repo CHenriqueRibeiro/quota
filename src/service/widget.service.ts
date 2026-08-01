@@ -401,6 +401,126 @@ async create(
   };
 
 }
+
+  async list(tenantId: string) {
+    return prisma.widget.findMany({
+      where: { tenantId },
+      include: {
+        assistant: {
+          select: {
+            id: true,
+            name: true,
+            provider: true,
+            model: true,
+            Topic: {
+              where: { enabled: true },
+              orderBy: { sortOrder: "asc" }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+  }
+
+  async getById(tenantId: string, widgetId: string) {
+    const widget = await prisma.widget.findFirst({
+      where: { id: widgetId, tenantId },
+      include: {
+        assistant: {
+          select: {
+            id: true,
+            name: true,
+            provider: true,
+            model: true,
+            Topic: {
+              where: { enabled: true },
+              orderBy: { sortOrder: "asc" }
+            }
+          }
+        }
+      }
+    });
+
+    if (!widget) {
+      throw new Error("Widget não encontrado.");
+    }
+
+    return widget;
+  }
+
+  async update(params: {
+    tenantId: string;
+    widgetId: string;
+    name?: string;
+    assistantId?: string;
+    allowedDomains?: string[];
+    securityLevel?: "STANDARD" | "STRICT";
+    rateLimit?: number;
+    primaryColor?: string;
+    welcomeMessage?: string;
+    active?: boolean;
+    logo?: string;
+  }) {
+    const existing = await prisma.widget.findFirst({
+      where: { id: params.widgetId, tenantId: params.tenantId }
+    });
+
+    if (!existing) {
+      throw new Error("Widget não encontrado.");
+    }
+
+    if (params.assistantId && params.assistantId !== existing.assistantId) {
+      const assistant = await prisma.assistant.findFirst({
+        where: { id: params.assistantId, tenantId: params.tenantId }
+      });
+      if (!assistant) {
+        throw new Error("Assistente não encontrado.");
+      }
+    }
+
+    const dataToUpdate: any = {};
+    if (params.name !== undefined) dataToUpdate.name = params.name.trim();
+    if (params.assistantId !== undefined) dataToUpdate.assistantId = params.assistantId;
+    if (params.allowedDomains !== undefined) dataToUpdate.allowedDomains = params.allowedDomains;
+    if (params.securityLevel !== undefined) dataToUpdate.securityLevel = params.securityLevel;
+    if (params.rateLimit !== undefined) dataToUpdate.rateLimit = params.rateLimit;
+    if (params.primaryColor !== undefined) dataToUpdate.primaryColor = params.primaryColor;
+    if (params.welcomeMessage !== undefined) dataToUpdate.welcomeMessage = params.welcomeMessage;
+    if (params.active !== undefined) dataToUpdate.active = params.active;
+    if (params.logo !== undefined) dataToUpdate.logo = params.logo;
+
+    return prisma.widget.update({
+      where: { id: existing.id },
+      data: dataToUpdate,
+      include: {
+        assistant: {
+          select: {
+            id: true,
+            name: true,
+            provider: true,
+            model: true
+          }
+        }
+      }
+    });
+  }
+
+  async delete(tenantId: string, widgetId: string) {
+    const existing = await prisma.widget.findFirst({
+      where: { id: widgetId, tenantId }
+    });
+
+    if (!existing) {
+      throw new Error("Widget não encontrado.");
+    }
+
+    await prisma.widget.delete({
+      where: { id: existing.id }
+    });
+
+    return { message: "Widget excluído com sucesso" };
+  }
 }
 
 

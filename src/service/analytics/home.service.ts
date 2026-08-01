@@ -1587,6 +1587,10 @@ private async getBudgetSummary(
 
       },
 
+      include:{
+        billingGroup:true
+      },
+
       orderBy:{
 
         createdAt:"asc"
@@ -1612,163 +1616,64 @@ private async getBudgetSummary(
 
 
 
-    if(budget.billingGroupId){
-
-      budgetWhere.billingGroupId =
-        budget.billingGroupId;
-
+    if (budget.billingGroupId) {
+      budgetWhere.billingGroupId = budget.billingGroupId;
     }
 
-
-
-    if(budget.project){
-
-      budgetWhere.project =
-        budget.project;
-
+    if (budget.project) {
+      budgetWhere.project = budget.project;
     }
 
-
-
-    if(budget.agent){
-
-      budgetWhere.agent =
-        budget.agent;
-
+    if (budget.agent) {
+      budgetWhere.agent = budget.agent;
     }
 
+    const usage = await prisma.usageLog.aggregate({
+      where: budgetWhere,
+      _sum: {
+        estimatedCost: true
+      },
+      _count: {
+        id: true
+      }
+    });
 
-
-    const usage =
-      await prisma.usageLog.aggregate({
-
-        where:budgetWhere,
-
-        _sum:{
-
-          estimatedCost:true
-
-        },
-
-        _count:{
-
-          id:true
-
-        }
-
-      });
-
-
-
-    const used =
-      usage._sum.estimatedCost ?? 0;
-
-
-
-    const requests =
-      usage._count.id;
-
-
-
-    const limit =
-      budget.limit;
-
-
+    const used = usage._sum.estimatedCost ?? 0;
+    const requests = usage._count.id;
+    const limit = budget.limit;
 
     let percent = 0;
-
-
-
-    if(limit > 0){
-
-      percent =
-        (
-          used /
-          limit
-        )
-        *
-        100;
-
+    if (limit > 0) {
+      percent = (used / limit) * 100;
     }
 
-
-
-    let remaining =
-      limit - used;
-
-
-
-    if(remaining < 0){
-
+    let remaining = limit - used;
+    if (remaining < 0) {
       remaining = 0;
-
     }
 
-
+    const name = budget.project
+      ? `Projeto: ${budget.project}`
+      : budget.agent
+      ? `Agente: ${budget.agent}`
+      : (budget as any).billingGroup?.name
+      ? `Grupo: ${(budget as any).billingGroup.name}`
+      : "Orçamento Global";
 
     summary.push({
-
-      id:budget.id,
-
-
-
-      billingGroupId:
-        budget.billingGroupId,
-
-
-
-      project:
-        budget.project,
-
-
-
-      agent:
-        budget.agent,
-
-
-
-      period:
-        budget.period,
-
-
-
+      id: budget.id,
+      name,
+      billingGroupId: budget.billingGroupId,
+      billingGroupName: (budget as any).billingGroup?.name ?? null,
+      project: budget.project,
+      agent: budget.agent,
+      period: budget.period,
       requests,
-
-
-
-      used:
-        Number(
-          used.toFixed(2)
-        ),
-
-
-
-      limit:
-        Number(
-          limit.toFixed(2)
-        ),
-
-
-
-      remaining:
-        Number(
-          remaining.toFixed(2)
-        ),
-
-
-
-      percent:
-        Number(
-          percent.toFixed(2)
-        ),
-
-
-
-      status:
-        this.getBudgetStatus(
-          percent
-        )
-
+      used: Number(used.toFixed(used > 0 && used < 0.01 ? 4 : 2)),
+      limit: Number(limit.toFixed(2)),
+      remaining: Number(remaining.toFixed(used > 0 && used < 0.01 ? 4 : 2)),
+      percent: Number(percent.toFixed(percent > 0 && percent < 0.01 ? 4 : 2)),
+      status: this.getBudgetStatus(percent)
     });
 
   }
