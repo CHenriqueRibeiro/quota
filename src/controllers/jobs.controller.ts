@@ -119,19 +119,12 @@ export class JobsController {
 
 
 
+      const totalRequests = processed + failed;
+
       const errorRate =
-        processed > 0
-          ?
-            Number(
-              (
-                (failed / processed)
-                *
-                100
-              )
-              .toFixed(2)
-            )
-          :
-            0;
+        totalRequests > 0
+          ? Number(((failed / totalRequests) * 100).toFixed(2))
+          : 0;
 
 
 

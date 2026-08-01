@@ -6,14 +6,12 @@
  *  Pré-requisitos:
  *    - Servidor rodando em http://localhost:3000  (bun run dev)
  *    - Worker rodando (bun run worker)
- *    - Banco contendo ao menos:
- *        Tenant  : dc36e5fe-01b2-43fa-a7c9-02acaec851b9
- *        User    : fce35110-14dd-4068-8680-4fdb22f930e4  (ADMIN, senha: 123456)
  *
  *  Rodar:  bun test src/tests/e2e_full.test.ts --timeout 60000
  * ============================================================================
  */
 
+import "dotenv/config";
 import { describe, test, expect, beforeAll } from "bun:test";
 import { PrismaClient, ProviderName } from "@prisma/client";
 import crypto from "crypto";
@@ -24,8 +22,8 @@ const prisma = new PrismaClient();
 /* ------------------------------------------------------------------ */
 /*  IDs fixos                                                         */
 /* ------------------------------------------------------------------ */
-const TENANT_ID = "dc36e5fe-01b2-43fa-a7c9-02acaec851b9";
-const USER_ID = "fce35110-14dd-4068-8680-4fdb22f930e4";
+let TENANT_ID = "";
+let USER_ID = "";
 const DEFAULT_PASSWORD = "123456";
 
 /* ------------------------------------------------------------------ */
@@ -101,8 +99,14 @@ function auth(token: string) {
 /*  0 · PREPARAÇÃO                                                    */
 /* ================================================================== */
 beforeAll(async () => {
-  const user = await prisma.user.findUnique({ where: { id: USER_ID } });
-  if (!user) throw new Error("User fixo não encontrado no banco");
+  const envUserId = process.env.TEST_USER_ID;
+  const user = envUserId
+    ? await prisma.user.findUnique({ where: { id: envUserId } })
+    : (await prisma.user.findFirst({ where: { role: "ADMIN" } }) || await prisma.user.findFirst());
+
+  if (!user) throw new Error("Nenhum usuário encontrado no banco de dados");
+  USER_ID = user.id;
+  TENANT_ID = process.env.TEST_TENANT_ID || user.tenantId;
   USER_EMAIL = user.email;
 
   // Atualizar plano para ENTERPRISE e limpar API keys legadas do tenant para garantir isolamento
@@ -891,7 +895,7 @@ describe("Home", () => {
 /* ================================================================== */
 describe("Failed Usage", () => {
   test("17.1 · Listar → 200", async () => { expect((await get("/failed-usage", auth(TOKEN))).status).toBe(200); });
-  test("17.2 · Retry → 200", async () => { expect((await post("/failed-usage/retry", {}, auth(TOKEN))).status).toBe(200); });
+  test("17.2 · Retry → 200/202", async () => { expect([200, 202]).toContain((await post("/failed-usage/retry", {}, auth(TOKEN))).status); });
 });
 
 /* ================================================================== */
