@@ -298,6 +298,26 @@ return {
         (quota.used / quota.limit) * 100;
 
 
+    } else {
+      const budgetSum = await prisma.budget.aggregate({
+        where: {
+          tenantId: where.tenantId as string
+        },
+        _sum: {
+          limit: true
+        }
+      });
+      const totalBudget = budgetSum._sum.limit ?? 0;
+      if (totalBudget > 0) {
+        const totalUsedAggregate = await prisma.usageLog.aggregate({
+          where,
+          _sum: {
+            estimatedCost: true
+          }
+        });
+        const totalUsedCost = totalUsedAggregate._sum.estimatedCost ?? 0;
+        quotaUsage = (totalUsedCost / totalBudget) * 100;
+      }
     }
 
 
@@ -888,7 +908,7 @@ return {
 
       complete(
         "Alertas ativos",
-        15
+        20
       );
 
     }
@@ -896,7 +916,7 @@ return {
 
       miss(
         "Criar Alertas",
-        15,
+        20,
         "Alta",
         "Configure alertas de custo e operação."
       );
@@ -911,6 +931,13 @@ return {
 
 
 
+    const budgetCount =
+      await prisma.budget.count({
+        where: {
+          tenantId: user.tenantId
+        }
+      });
+
     const quota =
       await prisma.quota.findUnique({
 
@@ -920,15 +947,11 @@ return {
 
       });
 
-
-
-
-
-    if(quota){
+    if(budgetCount > 0 || quota){
 
       complete(
         "Controle financeiro",
-        10
+        20
       );
 
     }
@@ -936,7 +959,7 @@ return {
 
       miss(
         "Criar limite financeiro",
-        10,
+        20,
         "Alta",
         "Configure orçamento."
       );

@@ -117,7 +117,7 @@ class WidgetTopicService {
       tenantId:
         widget.tenantId,
 
-      role:"OWNER"
+      role:"ADMIN"
 
     };
 

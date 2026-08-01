@@ -23,7 +23,7 @@ class AlertController {
       const body = request.body as any;
       const targetTenantId = body?.tenantId || actor.tenantId;
 
-      if (actor.role !== "OWNER" && actor.tenantId !== targetTenantId) {
+      if (actor.role !== "ADMIN" && actor.tenantId !== targetTenantId) {
         return reply.status(403).send({ error: "Sem permissão para este tenant" });
       }
 
@@ -100,7 +100,7 @@ class AlertController {
         return reply.status(400).send({ error: "Tenant missing" });
       }
 
-      if (actor.role !== "OWNER" && actor.tenantId !== tenantId) {
+      if (actor.role !== "ADMIN" && actor.tenantId !== tenantId) {
         return reply.status(403).send({ error: "Sem permissão para este tenant" });
       }
 
@@ -140,7 +140,7 @@ class AlertController {
         return reply.status(400).send({ error: "Tenant missing" });
       }
 
-      if (actor.role !== "OWNER" && actor.tenantId !== tenantId) {
+      if (actor.role !== "ADMIN" && actor.tenantId !== tenantId) {
         return reply.status(403).send({ error: "Sem permissão para este tenant" });
       }
 
@@ -173,7 +173,7 @@ class AlertController {
         return reply.status(404).send({ error: "Alerta não encontrado" });
       }
 
-      if (actor.role !== "OWNER" && actor.tenantId !== alertConfig.tenantId) {
+      if (actor.role !== "ADMIN" && actor.tenantId !== alertConfig.tenantId) {
         return reply.status(403).send({ error: "Sem permissão para este tenant" });
       }
 
@@ -208,7 +208,7 @@ class AlertController {
         return reply.status(400).send({ error: "Tenant missing" });
       }
 
-      if (actor.role !== "OWNER" && actor.tenantId !== tenantId) {
+      if (actor.role !== "ADMIN" && actor.tenantId !== tenantId) {
         return reply.status(403).send({ error: "Sem permissão para este tenant" });
       }
 
@@ -248,7 +248,7 @@ class AlertController {
         return reply.status(404).send({ error: "Alerta não encontrado" });
       }
 
-      if (actor.role !== "OWNER" && actor.tenantId !== existing.tenantId) {
+      if (actor.role !== "ADMIN" && actor.tenantId !== existing.tenantId) {
         return reply.status(403).send({ error: "Sem permissão para este tenant" });
       }
 
@@ -320,7 +320,7 @@ class AlertController {
         return reply.status(404).send({ error: "Alerta não encontrado" });
       }
 
-      if (actor.role !== "OWNER" && actor.tenantId !== existing.tenantId) {
+      if (actor.role !== "ADMIN" && actor.tenantId !== existing.tenantId) {
         return reply.status(403).send({ error: "Sem permissão para este tenant" });
       }
 

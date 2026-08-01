@@ -29,7 +29,7 @@ export async function userRoutes(
     { 
       preHandler: [
         authenticate,
-        authorize('OWNER')
+        authorize('ADMIN')
       ] 
     },
     userController.createOwner

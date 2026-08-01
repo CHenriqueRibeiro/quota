@@ -56,7 +56,7 @@ console.log("USER:", request.user);
     }
 
     if (
-      actor.role !== "OWNER" &&
+      actor.role !== "ADMIN" &&
       actor.role !== "MANAGER"
     ) {
       return reply.status(403).send({
@@ -157,7 +157,7 @@ console.log("USER:", request.user);
       const queryTenantId = (request.query as any)?.tenantId;
       const tenantId = paramTenantId || queryTenantId || actor.tenantId;
 
-      if (actor.role !== "OWNER" && actor.tenantId !== tenantId) {
+      if (actor.role !== "ADMIN" && actor.tenantId !== tenantId) {
         return reply.status(403).send({ error: "Sem permissão para este tenant" });
       }
 
@@ -375,7 +375,7 @@ if(!actor){
       }
 
       if (
-        actor.role !== "OWNER" &&
+        actor.role !== "ADMIN" &&
         actor.role !== "MANAGER"
       ) {
         return reply.status(403).send({

@@ -15,7 +15,7 @@ export class BillingController {
       return reply.status(400).send({ error: 'tenantId is required' });
     }
 
-    if (actor && actor.role !== 'OWNER' && actor.tenantId !== tenantId) {
+    if (actor && actor.role !== 'ADMIN' && actor.tenantId !== tenantId) {
       return reply.status(403).send({ error: 'Sem permissão para este tenant' });
     }
 
@@ -35,7 +35,7 @@ export class BillingController {
       return reply.status(400).send({ error: 'tenantId is required' });
     }
 
-    if (actor && actor.role !== 'OWNER' && actor.tenantId !== tenantId) {
+    if (actor && actor.role !== 'ADMIN' && actor.tenantId !== tenantId) {
       return reply.status(403).send({ error: 'Sem permissão para este tenant' });
     }
 
@@ -76,7 +76,7 @@ export class BillingController {
       const group = await prisma.billingGroup.findFirst({
         where: {
           id,
-          ...(tenantId && actor?.role !== 'OWNER' ? { tenantId } : {})
+          ...(tenantId && actor?.role !== 'ADMIN' ? { tenantId } : {})
         }
       });
 
@@ -84,7 +84,7 @@ export class BillingController {
         return reply.status(404).send({ error: 'Billing group not found' });
       }
 
-      if (actor && actor.role !== 'OWNER' && actor.tenantId !== group.tenantId) {
+      if (actor && actor.role !== 'ADMIN' && actor.tenantId !== group.tenantId) {
         return reply.status(403).send({ error: 'Sem permissão para este tenant' });
       }
 

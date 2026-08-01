@@ -28,7 +28,7 @@ export class FailedUsageController {
         return reply.status(400).send({ error: "Tenant missing" });
       }
 
-      if (actor.role !== "OWNER" && actor.tenantId !== tenantId) {
+      if (actor.role !== "ADMIN" && actor.tenantId !== tenantId) {
         return reply.status(403).send({ error: "Sem permissão para este tenant" });
       }
 
@@ -69,7 +69,7 @@ export class FailedUsageController {
       const failed = await prisma.failedUsage.findFirst({
         where: {
           id,
-          ...(actor.role !== "OWNER" ? { tenantId: actor.tenantId } : {})
+          ...(actor.role !== "ADMIN" ? { tenantId: actor.tenantId } : {})
         }
       });
 
@@ -126,7 +126,7 @@ export class FailedUsageController {
         return reply.status(400).send({ error: "Tenant missing" });
       }
 
-      if (actor.role !== "OWNER" && actor.tenantId !== tenantId) {
+      if (actor.role !== "ADMIN" && actor.tenantId !== tenantId) {
         return reply.status(403).send({ error: "Sem permissão para este tenant" });
       }
 

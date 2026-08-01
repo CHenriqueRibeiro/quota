@@ -191,7 +191,7 @@ class AssistantService {
   user: AuthenticatedUser
 ){
   const scopeWhere: any = {};
-  if (user.role !== 'OWNER' && user.role !== 'MANAGER' && user.scopeId) {
+  if (user.role !== 'ADMIN' && user.role !== 'MANAGER' && user.scopeId) {
     scopeWhere.OR = [
       { scopeId: user.scopeId },
       { scopeId: null }

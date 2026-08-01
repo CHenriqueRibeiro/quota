@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 
 const roleHierarchy: Record<UserRole, number> = {
-  OWNER: 4,
+  ADMIN: 4,
   MANAGER: 3,
   ANALYST: 2,
   DEV: 1
@@ -38,7 +38,7 @@ export const authenticate = async (
 
       request.user = {
         id: 'system-owner',
-        role: 'OWNER'
+        role: 'ADMIN'
       } as any;
 
       return;

@@ -10,31 +10,35 @@ class PermissionService {
   }
 
   canManageUsers(user: AuthenticatedUser) {
-    return this.hasRole(user, "OWNER", "MANAGER");
+    return this.hasRole(user, "ADMIN", "MANAGER");
   }
 
   canManageScopes(user: AuthenticatedUser) {
-    return this.hasRole(user, "OWNER", "MANAGER");
+    return this.hasRole(user, "ADMIN", "MANAGER");
   }
 
   canManageApiKeys(user: AuthenticatedUser) {
-    return this.hasRole(user, "OWNER", "MANAGER");
+    return this.hasRole(user, "ADMIN", "MANAGER");
   }
 
   canManageProviders(user: AuthenticatedUser) {
-    return this.hasRole(user, "OWNER", "MANAGER");
+    return this.hasRole(user, "ADMIN", "MANAGER");
   }
 
   canManageAlerts(user: AuthenticatedUser) {
-    return this.hasRole(user, "OWNER", "MANAGER");
+    return this.hasRole(user, "ADMIN", "MANAGER");
   }
 
   canViewDashboard(user: AuthenticatedUser) {
     return true;
   }
 
+  isAdmin(user: AuthenticatedUser) {
+    return user.role === "ADMIN";
+  }
+
   isOwner(user: AuthenticatedUser) {
-    return user.role === "OWNER";
+    return user.role === "ADMIN";
   }
 
 }

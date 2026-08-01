@@ -14,24 +14,24 @@ const prisma = new PrismaClient();
 
 export type CreateScopeInput = {
 
-  tenantId:string;
+  tenantId: string;
 
-  name:string;
+  name: string;
 
-  description?:string;
+  description?: string;
 
-  mode:ScopeMode;
+  mode: ScopeMode;
 
 
-  billingGroups?:string[];
+  billingGroups?: string[];
 
-  projects?:string[];
+  projects?: string[];
 
-  agents?:string[];
+  agents?: string[];
 
-  providers?:ProviderName[];
+  providers?: ProviderName[];
 
-  models?:string[];
+  models?: string[];
 
 };
 
@@ -51,21 +51,21 @@ class ScopeService {
 
 
   async create(
-    data:CreateScopeInput
-  ){
+    data: CreateScopeInput
+  ) {
 
 
     return prisma.scope.create({
 
-      data:{
+      data: {
 
-        tenantId:data.tenantId,
+        tenantId: data.tenantId,
 
-        name:data.name,
+        name: data.name,
 
-        description:data.description,
+        description: data.description,
 
-        mode:data.mode,
+        mode: data.mode,
 
 
         billingGroups:
@@ -101,18 +101,18 @@ class ScopeService {
 
 
   async list(
-    tenantId:string
-  ){
+    tenantId: string
+  ) {
 
 
     return prisma.scope.findMany({
 
-      where:{
+      where: {
         tenantId
       },
 
-      orderBy:{
-        name:"asc"
+      orderBy: {
+        name: "asc"
       }
 
     });
@@ -127,20 +127,20 @@ class ScopeService {
 
 
   async get(
-  tenantId:string,
-  id:string
-){
+    tenantId: string,
+    id: string
+  ) {
 
-  return prisma.scope.findFirst({
+    return prisma.scope.findFirst({
 
-    where:{
-      id,
-      tenantId
-    }
+      where: {
+        id,
+        tenantId
+      }
 
-  });
+    });
 
-}
+  }
 
 
 
@@ -149,41 +149,41 @@ class ScopeService {
 
 
   async update(
- tenantId:string,
- id:string,
- data:Partial<CreateScopeInput>
-){
+    tenantId: string,
+    id: string,
+    data: Partial<CreateScopeInput>
+  ) {
 
 
     const scope =
- await prisma.scope.findFirst({
+      await prisma.scope.findFirst({
 
-  where:{
-    id,
-    tenantId
-  }
+        where: {
+          id,
+          tenantId
+        }
 
-});
-
-
-if(!scope){
-
- throw new Error(
-  "Scope não encontrado."
- );
-
-}
+      });
 
 
-return prisma.scope.update({
+    if (!scope) {
 
- where:{
-  id
- },
+      throw new Error(
+        "Scope não encontrado."
+      );
 
- data
+    }
 
-});
+
+    return prisma.scope.update({
+
+      where: {
+        id
+      },
+
+      data
+
+    });
 
 
   }
@@ -195,40 +195,40 @@ return prisma.scope.update({
 
 
   async delete(
- tenantId:string,
- id:string
-){
+    tenantId: string,
+    id: string
+  ) {
 
 
     const scope =
- await prisma.scope.findFirst({
+      await prisma.scope.findFirst({
 
-  where:{
-    id,
-    tenantId
-  }
+        where: {
+          id,
+          tenantId
+        }
 
-});
-
-
-if(!scope){
-
- throw new Error(
-  "Scope não encontrado."
- );
-
-}
+      });
 
 
+    if (!scope) {
 
-return prisma.scope.delete({
+      throw new Error(
+        "Scope não encontrado."
+      );
 
- where:{
-  id
+    }
 
- }
 
-});
+
+    return prisma.scope.delete({
+
+      where: {
+        id
+
+      }
+
+    });
 
 
   }
@@ -262,7 +262,7 @@ return prisma.scope.delete({
     const user = await prisma.user.findFirst({
       where: {
         id: userId,
-        ...(actorUser.role !== "OWNER" ? { tenantId: targetTenantId } : {})
+        ...(actorUser.role !== "ADMIN" ? { tenantId: targetTenantId } : {})
       },
       select: {
         id: true,
@@ -316,17 +316,17 @@ return prisma.scope.delete({
 
 
   async validateScope(
-    tenantId:string,
-    scopeId:string
-  ){
+    tenantId: string,
+    scopeId: string
+  ) {
 
 
     const scope =
       await prisma.scope.findFirst({
 
-        where:{
+        where: {
 
-          id:scopeId,
+          id: scopeId,
 
           tenantId
 
@@ -336,7 +336,7 @@ return prisma.scope.delete({
 
 
 
-    if(!scope){
+    if (!scope) {
 
       throw new Error(
         "Scope inválido."
@@ -360,11 +360,11 @@ return prisma.scope.delete({
 
 
   async getUserScope(
-    user:AuthenticatedUser
-  ){
+    user: AuthenticatedUser
+  ) {
 
 
-    if(!user.scopeId){
+    if (!user.scopeId) {
 
       return null;
 
@@ -374,11 +374,11 @@ return prisma.scope.delete({
 
     return prisma.scope.findFirst({
 
-      where:{
+      where: {
 
-        id:user.scopeId,
+        id: user.scopeId,
 
-        tenantId:user.tenantId
+        tenantId: user.tenantId
 
       }
 
@@ -403,42 +403,42 @@ return prisma.scope.delete({
 
 
   async buildWhere(
-    user:AuthenticatedUser,
-    startDate:Date,
-    endDate:Date
-  ):Promise<Prisma.UsageLogWhereInput>{
+    user: AuthenticatedUser,
+    startDate: Date,
+    endDate: Date
+  ): Promise<Prisma.UsageLogWhereInput> {
 
 
 
 
 
     /*
-      OWNER / MANAGER
+      ADMIN / MANAGER
 
       acesso total tenant
     */
 
 
-    if(
+    if (
 
-      user.role === "OWNER" ||
+      user.role === "ADMIN" ||
 
       user.role === "MANAGER"
 
-    ){
+    ) {
 
 
       return {
 
 
-        tenantId:user.tenantId,
+        tenantId: user.tenantId,
 
 
-        createdAt:{
+        createdAt: {
 
-          gte:startDate,
+          gte: startDate,
 
-          lte:endDate
+          lte: endDate
 
         }
 
@@ -467,7 +467,7 @@ return prisma.scope.delete({
 
 
 
-    if(!scope){
+    if (!scope) {
 
 
       throw new Error(
@@ -494,24 +494,24 @@ return prisma.scope.delete({
     */
 
 
-    if(
+    if (
 
       scope.mode === ScopeMode.FULL
 
-    ){
+    ) {
 
 
       return {
 
 
-        tenantId:user.tenantId,
+        tenantId: user.tenantId,
 
 
-        createdAt:{
+        createdAt: {
 
-          gte:startDate,
+          gte: startDate,
 
-          lte:endDate
+          lte: endDate
 
         }
 
@@ -536,7 +536,7 @@ return prisma.scope.delete({
     */
 
 
-    if(
+    if (
 
       scope.mode === ScopeMode.CUSTOM &&
 
@@ -550,7 +550,7 @@ return prisma.scope.delete({
 
       !scope.models.length
 
-    ){
+    ) {
 
       throw new Error(
 
@@ -567,17 +567,17 @@ return prisma.scope.delete({
 
 
 
-    const where:Prisma.UsageLogWhereInput = {
+    const where: Prisma.UsageLogWhereInput = {
 
 
-      tenantId:user.tenantId,
+      tenantId: user.tenantId,
 
 
-      createdAt:{
+      createdAt: {
 
-        gte:startDate,
+        gte: startDate,
 
-        lte:endDate
+        lte: endDate
 
       }
 
@@ -591,15 +591,15 @@ return prisma.scope.delete({
 
 
 
-    if(scope.billingGroups.length){
+    if (scope.billingGroups.length) {
 
 
       where.billingGroup = {
 
 
-        name:{
+        name: {
 
-          in:scope.billingGroups
+          in: scope.billingGroups
 
         }
 
@@ -616,13 +616,13 @@ return prisma.scope.delete({
 
 
 
-    if(scope.projects.length){
+    if (scope.projects.length) {
 
 
       where.project = {
 
 
-        in:scope.projects
+        in: scope.projects
 
 
       };
@@ -637,13 +637,13 @@ return prisma.scope.delete({
 
 
 
-    if(scope.agents.length){
+    if (scope.agents.length) {
 
 
       where.agent = {
 
 
-        in:scope.agents
+        in: scope.agents
 
 
       };
@@ -658,13 +658,13 @@ return prisma.scope.delete({
 
 
 
-    if(scope.providers.length){
+    if (scope.providers.length) {
 
 
       where.provider = {
 
 
-        in:scope.providers
+        in: scope.providers
 
 
       };
@@ -679,13 +679,13 @@ return prisma.scope.delete({
 
 
 
-    if(scope.models.length){
+    if (scope.models.length) {
 
 
       where.model = {
 
 
-        in:scope.models
+        in: scope.models
 
 
       };

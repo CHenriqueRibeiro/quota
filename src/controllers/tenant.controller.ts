@@ -59,7 +59,7 @@ export class TenantController {
         return reply.status(400).send({ error: 'tenantId é obrigatório' });
       }
 
-      if (actor && actor.role !== 'OWNER' && actor.tenantId !== resolvedTenantId) {
+      if (actor && actor.role !== 'ADMIN' && actor.tenantId !== resolvedTenantId) {
         return reply.status(403).send({ error: 'Você não tem permissão para gerar API keys para este tenant' });
       }
 
@@ -147,7 +147,7 @@ export class TenantController {
         return reply.status(400).send({ error: 'tenantId é obrigatório' });
       }
 
-      if (actor && actor.role !== 'OWNER' && actor.tenantId !== resolvedTenantId) {
+      if (actor && actor.role !== 'ADMIN' && actor.tenantId !== resolvedTenantId) {
         return reply.status(403).send({ error: 'Você não tem permissão para listar API keys deste tenant' });
       }
 
@@ -177,7 +177,7 @@ export class TenantController {
         return reply.status(400).send({ error: 'tenantId é obrigatório' });
       }
 
-      if (actor && actor.role !== 'OWNER' && actor.tenantId !== resolvedTenantId) {
+      if (actor && actor.role !== 'ADMIN' && actor.tenantId !== resolvedTenantId) {
         return reply.status(403).send({ error: 'Você não tem permissão para criar credenciais deste tenant' });
       }
 
@@ -238,7 +238,7 @@ export class TenantController {
         return reply.status(400).send({ error: 'tenantId é obrigatório' });
       }
 
-      if (actor && actor.role !== 'OWNER' && actor.tenantId !== resolvedTenantId) {
+      if (actor && actor.role !== 'ADMIN' && actor.tenantId !== resolvedTenantId) {
         return reply.status(403).send({ error: 'Você não tem permissão para listar credenciais deste tenant' });
       }
 

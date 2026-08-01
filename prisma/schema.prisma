@@ -50,7 +50,7 @@ enum AlertPeriod {
 }
 
 enum Role {
-  OWNER
+  ADMIN
   MANAGER
   ANALYST
   DEV

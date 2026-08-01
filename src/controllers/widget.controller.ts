@@ -285,7 +285,7 @@ async publicInfo(
         return reply.status(400).send({ error: "tenantId é obrigatório" });
       }
 
-      if (actor.role !== "OWNER" && actor.tenantId !== tenantId) {
+      if (actor.role !== "ADMIN" && actor.tenantId !== tenantId) {
         return reply.status(403).send({ error: "Sem permissão para este tenant" });
       }
 

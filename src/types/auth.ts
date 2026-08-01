@@ -5,7 +5,7 @@ import type {
 import type { ProviderName } from "@prisma/client";
 
 export type UserRole =
-  | "OWNER"
+  | "ADMIN"
   | "MANAGER"
   | "ANALYST"
   | "DEV";

@@ -45,7 +45,7 @@ export class UserController {
   ) {
 
 
-    if(actorRole === 'OWNER') {
+    if(actorRole === 'ADMIN') {
       return true;
     }
 
@@ -135,12 +135,12 @@ export class UserController {
 
 
       if(
-        role === 'OWNER' &&
-        actor.role !== 'OWNER'
+        role === 'ADMIN' &&
+        actor.role !== 'ADMIN'
       ){
 
         return reply.status(403).send({
-          error:'Somente OWNER pode criar outro OWNER'
+          error:'Somente ADMIN pode criar outro ADMIN'
         });
 
       }
@@ -317,10 +317,10 @@ export class UserController {
 
 
 
-      if(actor.role !== 'OWNER'){
+      if(actor.role !== 'ADMIN'){
 
         return reply.status(403).send({
-          error:'Somente OWNER pode criar outro OWNER'
+          error:'Somente ADMIN pode criar outro ADMIN'
         });
 
       }
@@ -432,7 +432,7 @@ export class UserController {
 
             tenantId,
 
-            role:'OWNER'
+            role:'ADMIN'
 
           }
 
@@ -444,7 +444,7 @@ export class UserController {
 
       return reply.status(201).send({
 
-        message:'Owner criado com sucesso',
+        message:'Admin criado com sucesso',
 
         user:{
 
@@ -615,7 +615,7 @@ export class UserController {
         });
       }
 
-      if (actor.role !== 'OWNER' && targetTenantId !== actor.tenantId) {
+      if (actor.role !== 'ADMIN' && targetTenantId !== actor.tenantId) {
         return reply.status(403).send({
           error: 'Você não tem permissão para visualizar usuários deste tenant'
         });
