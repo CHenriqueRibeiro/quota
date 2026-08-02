@@ -6,6 +6,13 @@ const authController = new AuthController();
 
 export async function authRoutes(server: FastifyInstance) {
   server.post('/auth/login', authController.login);
+  server.post('/auth/sso', authController.ssoLogin);
+
+  server.get('/auth/google', authController.googleRedirect);
+  server.get('/auth/google/callback', authController.googleCallback);
+
+  server.get('/auth/microsoft', authController.microsoftRedirect);
+  server.get('/auth/microsoft/callback', authController.microsoftCallback);
 
   server.post(
     '/auth/logout', 
