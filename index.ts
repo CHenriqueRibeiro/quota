@@ -29,6 +29,7 @@ import { budgetRoutes } from "./src/routes/budget.routes";
 import { llmPricingRoutes } from "./src/routes/llm-pricing.routes";
 import { reportsRoutes } from "./src/routes/reports.routes";
 import llmPricingService from "./src/service/llm-pricing.service";
+import reportsService from "./src/service/reports.service";
 
 
 
@@ -84,6 +85,13 @@ const start = async () => {
     llmPricingService.ensureFreshPrices().catch((err) => {
       server.log.error('Erro ao sincronizar preços de LLM na inicialização:', err);
     });
+
+    // Inicia agendador automático de relatórios por e-mail em segundo plano (a cada 60s)
+    setInterval(() => {
+      reportsService.processDueReportSchedules().catch((err) => {
+        server.log.error('Erro no agendador de relatórios:', err);
+      });
+    }, 60 * 1000);
 
 
     await prisma.$connect();

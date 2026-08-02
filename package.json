@@ -6,6 +6,7 @@
   "scripts": {
     "start": "bun index.ts",
     "worker": "bun src/workers/usage.worker.ts",
+    "reports-worker": "bun src/workers/reports.worker.ts",
     "dev": "bun --watch index.ts"
   },
   "devDependencies": {

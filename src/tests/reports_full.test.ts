@@ -22,13 +22,26 @@ async function testReportsAndCsvImportExport() {
   });
   console.log(`[CSV Overview] Gerado com ${overviewCsv.split('\n').length} linhas:\n${overviewCsv.slice(0, 250)}...`);
 
-  // 3. Teste de Importação de Usuários em Lote via CSV
-  const sampleUsersCsv = `Nome,Email,Role,Senha
-Teste Importador 1,importador1@empresa-teste.com,ANALYST,Senha@123456
-Teste Importador 2,importador2@empresa-teste.com,MANAGER,Senha@123456`;
+  // 3. Teste de Importação de Usuários em Lote via CSV (incluindo Escopo por Nome)
+  const testScope = await prisma.scope.upsert({
+    where: { tenantId_name: { tenantId: tenant.id, name: "Escopo Teste CSV" } },
+    create: { tenantId: tenant.id, name: "Escopo Teste CSV" },
+    update: {}
+  });
+
+  const sampleUsersCsv = `Nome,Email,Role,Senha,Escopo
+Teste Importador 1,importador1@empresa-teste.com,ANALYST,Senha@123456,Escopo Teste CSV
+Teste Importador 2,importador2@empresa-teste.com,MANAGER,Senha@123456,`;
 
   const usersImportRes = await reportsService.importUsersCsv(tenant.id, sampleUsersCsv);
   console.log(`[Importação de Usuários] Criados: ${usersImportRes.createdUsers}, Já existiam: ${usersImportRes.existingCount}`);
+
+  const userWithScope = await prisma.user.findFirst({ where: { email: "importador1@empresa-teste.com" } });
+  if (userWithScope?.scopeId === testScope.id) {
+    console.log("✅ Usuário 1 associado corretamente ao escopo pelo nome!");
+  } else {
+    console.error("❌ Falha na associação do escopo por nome. Esperado:", testScope.id, "Recebido:", userWithScope?.scopeId);
+  }
 
   // 4. Teste de Importação de Consumo Histórico via CSV
   const sampleUsageCsv = `Provider,Model,PromptTokens,CompletionTokens,Cost,Project,Agent
@@ -41,6 +54,7 @@ openai,gpt-4o,100,50,0.005,Projeto Teste CSV,Agente Teste CSV`;
   await prisma.user.deleteMany({
     where: { email: { in: ["importador1@empresa-teste.com", "importador2@empresa-teste.com"] } }
   });
+  await prisma.scope.delete({ where: { id: testScope.id } }).catch(() => {});
   await prisma.usageLog.deleteMany({
     where: { project: "Projeto Teste CSV" }
   });
