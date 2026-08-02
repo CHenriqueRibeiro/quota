@@ -11,6 +11,7 @@ import { AgentsController } from "../controllers/agents.controller";
 import { DailyConsumptionController } from "../controllers/dailyConsumption.controller";
 import { LatencyController } from "../controllers/latency.controller";
 import { JobsController } from "../controllers/jobs.controller";
+import tagsAnalyticsController from "../controllers/tagsAnalytics.controller";
 
 const jobsController = new JobsController();
 const latencyController = new LatencyController();
@@ -176,5 +177,15 @@ server.get(
     ]
   },
   jobsController.jobs
+);
+
+server.get(
+  "/analytics/tags",
+  {
+    preHandler:[
+      authenticate
+    ]
+  },
+  tagsAnalyticsController.tags.bind(tagsAnalyticsController)
 );
 }

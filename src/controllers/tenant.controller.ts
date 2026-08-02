@@ -260,4 +260,68 @@ export class TenantController {
       return reply.status(400).send({ error: 'Erro ao listar credenciais de provider' });
     }
   }
+
+  async deleteProviderCredential(request: AuthenticatedRequest, reply: FastifyReply) {
+    try {
+      const actor = request.user;
+      const { id } = (request.params as any) || {};
+
+      if (!id) {
+        return reply.status(400).send({ error: 'id é obrigatório' });
+      }
+
+      const credential = await prisma.providerCredential.findUnique({
+        where: { id },
+      });
+
+      if (!credential) {
+        return reply.status(404).send({ error: 'Credencial não encontrada' });
+      }
+
+      if (actor && actor.role !== 'ADMIN' && actor.tenantId !== credential.tenantId) {
+        return reply.status(403).send({ error: 'Sem permissão para este tenant' });
+      }
+
+      await prisma.providerCredential.delete({
+        where: { id },
+      });
+
+      return reply.status(200).send({ message: 'Credencial excluída com sucesso' });
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Erro ao excluir credencial do provedor' });
+    }
+  }
+
+  async deleteApiKey(request: AuthenticatedRequest, reply: FastifyReply) {
+    try {
+      const actor = request.user;
+      const { id } = (request.params as any) || {};
+
+      if (!id) {
+        return reply.status(400).send({ error: 'id é obrigatório' });
+      }
+
+      const apiKey = await prisma.apiKey.findUnique({
+        where: { id },
+      });
+
+      if (!apiKey) {
+        return reply.status(404).send({ error: 'Chave de API não encontrada' });
+      }
+
+      if (actor && actor.role !== 'ADMIN' && actor.tenantId !== apiKey.tenantId) {
+        return reply.status(403).send({ error: 'Sem permissão para este tenant' });
+      }
+
+      await prisma.apiKey.delete({
+        where: { id },
+      });
+
+      return reply.status(200).send({ message: 'Chave de API excluída com sucesso' });
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Erro ao excluir chave de API' });
+    }
+  }
 }

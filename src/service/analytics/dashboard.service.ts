@@ -256,6 +256,51 @@ static async getAgents(
 
 }
 
+static async getTags(
+  where: Prisma.UsageLogWhereInput
+) {
+  const logs = await prisma.usageLog.findMany({
+    where,
+    select: {
+      tags: true,
+      totalTokens: true,
+      estimatedCost: true,
+    },
+  });
+
+  const map = new Map<string, { requests: number; tokens: number; cost: number }>();
+
+  for (const log of logs) {
+    let tagList: string[] = [];
+    if (Array.isArray(log.tags)) {
+      tagList = log.tags.filter((t): t is string => typeof t === "string");
+    } else if (typeof log.tags === "string") {
+      tagList = [log.tags];
+    } else {
+      tagList = ["Sem tag"];
+    }
+
+    if (tagList.length === 0) tagList = ["Sem tag"];
+
+    for (const tagName of tagList) {
+      const current = map.get(tagName) || { requests: 0, tokens: 0, cost: 0 };
+      current.requests += 1;
+      current.tokens += log.totalTokens || 0;
+      current.cost += Number(log.estimatedCost || 0);
+      map.set(tagName, current);
+    }
+  }
+
+  return Array.from(map.entries())
+    .map(([name, stats]) => ({
+      name,
+      requests: stats.requests,
+      tokens: stats.tokens,
+      cost: stats.cost,
+    }))
+    .sort((a, b) => b.tokens - a.tokens);
+}
+
 static async getUsers(
   where: Prisma.UsageLogWhereInput
 ) {

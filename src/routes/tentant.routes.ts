@@ -54,4 +54,28 @@ export async function tenantRoutes(server: FastifyInstance) {
     { preHandler: [authenticate, authorize('MANAGER')] },
     tenantController.listProviderCredentials
   );
+
+  server.delete(
+    '/tenants/:tenantId/provider-credentials/:id',
+    { preHandler: [authenticate, authorize('MANAGER')] },
+    tenantController.deleteProviderCredential
+  );
+
+  server.delete(
+    '/provider-credentials/:id',
+    { preHandler: [authenticate, authorize('MANAGER')] },
+    tenantController.deleteProviderCredential
+  );
+
+  server.delete(
+    '/tenants/:tenantId/api-keys/:id',
+    { preHandler: [authenticate, authorize('MANAGER')] },
+    tenantController.deleteApiKey
+  );
+
+  server.delete(
+    '/api-keys/:id',
+    { preHandler: [authenticate, authorize('MANAGER')] },
+    tenantController.deleteApiKey
+  );
 }

@@ -78,6 +78,9 @@ const projects =
 const agents =
   await DashboardService.getAgents(where);
 
+const tags =
+  await DashboardService.getTags(where);
+
 const users =
   await DashboardService.getUsers(where);
 
@@ -109,6 +112,7 @@ return reply.send({
   billingGroups,
   users,
   agents,
+  tags,
   dailyConsumption,
   latency,
   errors,

@@ -25,6 +25,7 @@ import { widgetChatRoutes } from "./src/routes/widget-chat.routes";
 import { widgetUploadRoutes } from "./src/routes/widget-upload.routes";
 import { projectManagementRoutes } from "./src/routes/project-management.routes";
 import { agentManagementRoutes } from "./src/routes/agent-management.routes";
+import { tagManagementRoutes } from "./src/routes/tag-management.routes";
 import { budgetRoutes } from "./src/routes/budget.routes";
 import { llmPricingRoutes } from "./src/routes/llm-pricing.routes";
 import { reportsRoutes } from "./src/routes/reports.routes";
@@ -77,6 +78,7 @@ const start = async () => {
     await server.register(widgetUploadRoutes);
     await server.register(projectManagementRoutes);
     await server.register(agentManagementRoutes);
+    await server.register(tagManagementRoutes);
     await server.register(budgetRoutes);
     await server.register(llmPricingRoutes);
     await server.register(reportsRoutes);
