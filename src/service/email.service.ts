@@ -13,11 +13,13 @@ export async function sendEmail({
   cc,
   subject,
   html,
+  attachments,
 }: {
   to: string;
   cc?: string | string[];
   subject: string;
   html: string;
+  attachments?: any[];
 }) {
   return transporter.sendMail({
     from: process.env.SMTP_FROM,
@@ -25,5 +27,6 @@ export async function sendEmail({
     cc,
     subject,
     html,
+    attachments,
   });
 }

@@ -51,6 +51,24 @@ enum AlertPeriod {
   MONTHLY
 }
 
+enum ReportFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum ReportType {
+  DETAILED_LOGS
+  OVERVIEW_DASHBOARD
+  BOTH
+}
+
+enum ReportFormat {
+  CSV
+  HTML
+  BOTH
+}
+
 enum Role {
   ADMIN
   MANAGER
@@ -116,6 +134,7 @@ model Tenant {
   WidgetRequestLog    WidgetRequestLog[]
   projects            Project[]
   agents              Agent[]
+  reportSchedules     ReportSchedule[]
 
   @@map("tenants")
 }
@@ -212,6 +231,7 @@ model BillingGroup {
 
   alertConfigs AlertConfig[]
   Budget       Budget[]
+  reportSchedules ReportSchedule[]
 
   @@unique([tenantId, name])
   @@map("billing_groups")
@@ -674,4 +694,40 @@ model Agent {
   @@unique([tenantId, name])
   @@index([tenantId])
   @@map("agents")
+}
+
+model ReportSchedule {
+  id String @id @default(uuid())
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name String
+
+  frequency ReportFrequency
+  dayOfWeek Int? // 0 (Dom) - 6 (Sáb) para relatórios semanais
+  dayOfMonth Int? // 1 - 31 para relatórios mensais
+  time String @default("08:00")
+
+  email String
+  ccEmails String[] @default([])
+
+  reportType ReportType @default(BOTH)
+  format ReportFormat @default(BOTH)
+
+  billingGroupId String?
+  billingGroup   BillingGroup? @relation(fields: [billingGroupId], references: [id], onDelete: SetNull)
+
+  project String?
+  agent String?
+  provider ProviderName?
+
+  enabled Boolean @default(true)
+  lastSentAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([enabled])
 }

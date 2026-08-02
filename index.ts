@@ -27,6 +27,7 @@ import { projectManagementRoutes } from "./src/routes/project-management.routes"
 import { agentManagementRoutes } from "./src/routes/agent-management.routes";
 import { budgetRoutes } from "./src/routes/budget.routes";
 import { llmPricingRoutes } from "./src/routes/llm-pricing.routes";
+import { reportsRoutes } from "./src/routes/reports.routes";
 import llmPricingService from "./src/service/llm-pricing.service";
 
 
@@ -77,6 +78,7 @@ const start = async () => {
     await server.register(agentManagementRoutes);
     await server.register(budgetRoutes);
     await server.register(llmPricingRoutes);
+    await server.register(reportsRoutes);
 
     // Inicializa / Garante sincronização dos preços das LLMs (llm-prices.com) a cada 5 dias
     llmPricingService.ensureFreshPrices().catch((err) => {
