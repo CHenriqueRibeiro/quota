@@ -84,6 +84,7 @@ export class BudgetController {
             agent: budget.agent,
             limit,
             period: budget.period,
+            autoBlock: Boolean(budget.autoBlock),
             used: Number(used.toFixed(2)),
             remaining: Number(remaining.toFixed(2)),
             usagePercentage,
@@ -98,6 +99,106 @@ export class BudgetController {
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ error: "Erro ao listar orçamentos" });
+    }
+  }
+
+  async validate(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const actor = (request as AuthenticatedRequest).user;
+      const query = (request.query as any) || {};
+      const params = (request.params as any) || {};
+
+      const tenantId = params.tenantId || query.tenantId || actor?.tenantId;
+      if (!tenantId) {
+        return reply.status(400).send({ error: "tenantId é obrigatório" });
+      }
+
+      const { billingGroupId, project, agent } = query;
+
+      const budgets = await prisma.budget.findMany({
+        where: {
+          tenantId,
+          autoBlock: true,
+        },
+        include: { billingGroup: true }
+      });
+
+      if (!budgets || budgets.length === 0) {
+        return reply.status(200).send({
+          allowed: true,
+          message: "Nenhum orçamento com bloqueio automático configurado",
+        });
+      }
+
+      for (const budget of budgets) {
+        let isApplicable = false;
+
+        if (budget.billingGroupId && billingGroupId && budget.billingGroupId === String(billingGroupId)) {
+          isApplicable = true;
+        }
+        if (budget.project && project && budget.project.toLowerCase().trim() === String(project).toLowerCase().trim()) {
+          isApplicable = true;
+        }
+        if (budget.agent && agent && budget.agent.toLowerCase().trim() === String(agent).toLowerCase().trim()) {
+          isApplicable = true;
+        }
+        if (!budget.billingGroupId && !budget.project && !budget.agent) {
+          isApplicable = true;
+        }
+
+        if (isApplicable) {
+          const startDate = getPeriodDate(budget.period);
+          const where: Prisma.UsageLogWhereInput = {
+            tenantId,
+            createdAt: { gte: startDate }
+          };
+
+          if (budget.billingGroupId) where.billingGroupId = budget.billingGroupId;
+          if (budget.project) where.project = budget.project;
+          if (budget.agent) where.agent = budget.agent;
+
+          const usage = await prisma.usageLog.aggregate({
+            where,
+            _sum: { estimatedCost: true }
+          });
+
+          const used = Number(usage._sum.estimatedCost ?? 0);
+          const limit = Number(budget.limit);
+
+          if (limit > 0 && used >= limit) {
+            const targetName = budget.project
+              ? `Projeto ${budget.project}`
+              : budget.agent
+              ? `Agente ${budget.agent}`
+              : budget.billingGroup?.name
+              ? `Grupo ${budget.billingGroup.name}`
+              : "Global";
+
+            return reply.status(200).send({
+              allowed: false,
+              reason: `Orçamento excedido para ${targetName}`,
+              limit: Number(limit.toFixed(2)),
+              used: Number(used.toFixed(2)),
+              remaining: 0,
+              budget: {
+                id: budget.id,
+                billingGroupId: budget.billingGroupId,
+                project: budget.project,
+                agent: budget.agent,
+                autoBlock: true,
+              }
+            });
+          }
+        }
+      }
+
+      return reply.status(200).send({
+        allowed: true,
+        message: "Consumo dentro do orçamento permitido",
+      });
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: "Erro ao validar orçamento" });
     }
   }
 
@@ -120,7 +221,7 @@ export class BudgetController {
         return reply.status(403).send({ error: "Sem permissão para este tenant" });
       }
 
-      const { limit, period, billingGroupId, project, agent } = body;
+      const { limit, period, billingGroupId, project, agent, autoBlock } = body;
 
       if (limit === undefined || limit === null || Number(limit) <= 0) {
         return reply.status(400).send({ error: "Limite deve ser um número maior que zero" });
@@ -144,7 +245,8 @@ export class BudgetController {
           period: parsedPeriod,
           billingGroupId: billingGroupId || null,
           project: project?.trim() || null,
-          agent: agent?.trim() || null
+          agent: agent?.trim() || null,
+          autoBlock: Boolean(autoBlock),
         },
         include: { billingGroup: true }
       });
@@ -181,7 +283,7 @@ export class BudgetController {
       }
 
       const body = (request.body as any) || {};
-      const { limit, period, billingGroupId, project, agent } = body;
+      const { limit, period, billingGroupId, project, agent, autoBlock } = body;
 
       const dataToUpdate: any = {};
 
@@ -194,6 +296,10 @@ export class BudgetController {
 
       if (period !== undefined) {
         dataToUpdate.period = period === "DAILY" ? "DAILY" : "MONTHLY";
+      }
+
+      if (autoBlock !== undefined) {
+        dataToUpdate.autoBlock = Boolean(autoBlock);
       }
 
       if (billingGroupId !== undefined) {

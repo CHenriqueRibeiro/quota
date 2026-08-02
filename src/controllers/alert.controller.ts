@@ -32,6 +32,12 @@ class AlertController {
         period,
         threshold,
         email,
+        ccEmails,
+        cc,
+        quietHoursEnabled,
+        quietHoursStart,
+        quietHoursEnd,
+        timezone,
         provider,
         model,
         project,
@@ -44,9 +50,11 @@ class AlertController {
         TOKEN_THRESHOLD: "TOKENS",
         ERROR_RATE: "ERRORS",
         LATENCY: "LATENCY",
+        BUDGET_THRESHOLD: "BUDGET",
         COST: "COST",
         TOKENS: "TOKENS",
-        ERRORS: "ERRORS"
+        ERRORS: "ERRORS",
+        BUDGET: "BUDGET"
       };
 
       const type = typeMap[rawType] || rawType;
@@ -57,6 +65,14 @@ class AlertController {
         });
       }
 
+      const parsedCcEmails = Array.isArray(ccEmails)
+        ? ccEmails.map((item: any) => String(item).trim()).filter(Boolean)
+        : typeof ccEmails === "string"
+        ? ccEmails.split(/[,;]/).map((item) => item.trim()).filter(Boolean)
+        : typeof cc === "string"
+        ? cc.split(/[,;]/).map((item) => item.trim()).filter(Boolean)
+        : [];
+
       const alert = await prisma.alertConfig.create({
         data: {
           tenantId: targetTenantId,
@@ -64,11 +80,18 @@ class AlertController {
           period: period as any,
           threshold: Number(threshold),
           email,
-          provider: provider ? (String(provider).trim() as any) : null,
-          model: model ? String(model).trim() : null,
-          project: project ? String(project).trim() : null,
-          agent: agent ? String(agent).trim() : null,
-          billingGroupId: billingGroupId || null
+          ccEmails: parsedCcEmails,
+          quietHoursEnabled: Boolean(quietHoursEnabled),
+          quietHoursStart: quietHoursEnabled ? quietHoursStart || null : null,
+          quietHoursEnd: quietHoursEnabled ? quietHoursEnd || null : null,
+          timezone: timezone || "America/Sao_Paulo",
+          provider: provider || null,
+          model: model || null,
+          project: project || null,
+          agent: agent || null,
+          billingGroupId: billingGroupId || null,
+          budgetId: body.budgetId || null,
+          thresholdType: body.thresholdType || "PERCENTAGE"
         }
       });
 
@@ -261,9 +284,11 @@ class AlertController {
           TOKEN_THRESHOLD: "TOKENS",
           ERROR_RATE: "ERRORS",
           LATENCY: "LATENCY",
+          BUDGET_THRESHOLD: "BUDGET",
           COST: "COST",
           TOKENS: "TOKENS",
-          ERRORS: "ERRORS"
+          ERRORS: "ERRORS",
+          BUDGET: "BUDGET"
         };
         dataToUpdate.type = typeMap[body.type] || body.type;
       }
@@ -271,12 +296,26 @@ class AlertController {
       if (body.period !== undefined) dataToUpdate.period = body.period;
       if (body.threshold !== undefined) dataToUpdate.threshold = Number(body.threshold);
       if (body.email !== undefined) dataToUpdate.email = String(body.email).trim();
+      if (body.ccEmails !== undefined || body.cc !== undefined) {
+        const rawCc = body.ccEmails !== undefined ? body.ccEmails : body.cc;
+        dataToUpdate.ccEmails = Array.isArray(rawCc)
+          ? rawCc.map((item: any) => String(item).trim()).filter(Boolean)
+          : typeof rawCc === "string"
+          ? rawCc.split(/[,;]/).map((item) => item.trim()).filter(Boolean)
+          : [];
+      }
+      if (body.quietHoursEnabled !== undefined) dataToUpdate.quietHoursEnabled = Boolean(body.quietHoursEnabled);
+      if (body.quietHoursStart !== undefined) dataToUpdate.quietHoursStart = body.quietHoursStart ? String(body.quietHoursStart).trim() : null;
+      if (body.quietHoursEnd !== undefined) dataToUpdate.quietHoursEnd = body.quietHoursEnd ? String(body.quietHoursEnd).trim() : null;
+      if (body.timezone !== undefined) dataToUpdate.timezone = body.timezone ? String(body.timezone).trim() : "America/Sao_Paulo";
       if (body.enabled !== undefined) dataToUpdate.enabled = Boolean(body.enabled);
       if (body.provider !== undefined) dataToUpdate.provider = body.provider ? (String(body.provider).trim() as any) : null;
       if (body.model !== undefined) dataToUpdate.model = body.model ? String(body.model).trim() : null;
       if (body.project !== undefined) dataToUpdate.project = body.project ? String(body.project).trim() : null;
       if (body.agent !== undefined) dataToUpdate.agent = body.agent ? String(body.agent).trim() : null;
       if (body.billingGroupId !== undefined) dataToUpdate.billingGroupId = body.billingGroupId || null;
+      if (body.budgetId !== undefined) dataToUpdate.budgetId = body.budgetId || null;
+      if (body.thresholdType !== undefined) dataToUpdate.thresholdType = body.thresholdType || "PERCENTAGE";
 
       const updated = await prisma.alertConfig.update({
         where: { id },

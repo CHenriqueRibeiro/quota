@@ -16,6 +16,19 @@ export async function budgetRoutes(server: FastifyInstance) {
     budgetController.list.bind(budgetController)
   );
 
+  // Valida orçamento (Checagem rápida de limite)
+  server.get(
+    "/budgets/validate",
+    { preHandler: [authenticate] },
+    budgetController.validate.bind(budgetController)
+  );
+
+  server.get(
+    "/tenants/:tenantId/budgets/validate",
+    { preHandler: [authenticate] },
+    budgetController.validate.bind(budgetController)
+  );
+
   // Cria orçamento
   server.post(
     "/budgets",

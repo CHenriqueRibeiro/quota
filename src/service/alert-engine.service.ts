@@ -306,6 +306,60 @@ async function checkBudgets(tenantId: string) {
   }
 }
 
+async function checkBudgetAlert(alert: any) {
+  const budgets = alert.budgetId
+    ? await prisma.budget.findMany({ where: { id: alert.budgetId, tenantId: alert.tenantId }, include: { billingGroup: true } })
+    : await prisma.budget.findMany({ where: { tenantId: alert.tenantId }, include: { billingGroup: true } });
+
+  if (!budgets || budgets.length === 0) return;
+
+  for (const budget of budgets) {
+    const startDate = getPeriodDate(budget.period as any);
+    const where: any = {
+      tenantId: alert.tenantId,
+      createdAt: { gte: startDate }
+    };
+
+    if (budget.billingGroupId) where.billingGroupId = budget.billingGroupId;
+    if (budget.project) where.project = budget.project;
+    if (budget.agent) where.agent = budget.agent;
+
+    const result = await prisma.usageLog.aggregate({
+      where,
+      _sum: { estimatedCost: true }
+    });
+
+    const cost = Number(result._sum.estimatedCost ?? 0);
+    const limit = Number(budget.limit);
+
+    if (limit <= 0) continue;
+
+    let targetThreshold = Number(alert.threshold);
+    let triggerLabel = `$${targetThreshold.toFixed(2)}`;
+
+    if (alert.thresholdType === "PERCENTAGE" || alert.thresholdType === "%") {
+      targetThreshold = (limit * Number(alert.threshold)) / 100;
+      triggerLabel = `${alert.threshold}% ($${targetThreshold.toFixed(2)})`;
+    }
+
+    const targetName = budget.project
+      ? `Projeto ${budget.project}`
+      : budget.agent
+      ? `Agente ${budget.agent}`
+      : budget.billingGroup?.name
+      ? `Grupo ${budget.billingGroup.name}`
+      : "Global";
+
+    if (cost >= targetThreshold) {
+      await triggerAlert({
+        alertConfigId: alert.id,
+        title: `Alerta de Orçamento (${targetName})`,
+        message: `O consumo de $${cost.toFixed(2)} atingiu o limite configurado de ${triggerLabel} do orçamento de $${limit.toFixed(2)}.`
+      });
+    }
+  }
+}
+
 export async function processAlerts(
   tenantId:string
 ) {
@@ -357,6 +411,14 @@ export async function processAlerts(
       case "LATENCY":
 
         await checkLatencyAlert(alert);
+
+        break;
+
+
+
+      case "BUDGET":
+
+        await checkBudgetAlert(alert);
 
         break;
 

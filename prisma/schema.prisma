@@ -34,6 +34,7 @@ enum NotificationStatus {
   PENDING
   SENT
   FAILED
+  MUTED
 }
 
 enum AlertType {
@@ -41,6 +42,7 @@ enum AlertType {
   TOKENS
   LATENCY
   ERRORS
+  BUDGET
 }
 
 enum AlertPeriod {
@@ -319,6 +321,12 @@ model AlertConfig {
   threshold Float
 
   email String
+  ccEmails String[] @default([])
+
+  quietHoursEnabled Boolean @default(false)
+  quietHoursStart   String?
+  quietHoursEnd     String?
+  timezone          String? @default("America/Sao_Paulo")
 
   provider ProviderName?
 
@@ -326,6 +334,11 @@ model AlertConfig {
 
   billingGroupId String?
   billingGroup   BillingGroup? @relation(fields: [billingGroupId], references: [id], onDelete: SetNull)
+
+  budgetId String?
+  budget   Budget? @relation(fields: [budgetId], references: [id], onDelete: SetNull)
+
+  thresholdType String? @default("PERCENTAGE") // "PERCENTAGE" ou "VALUE"
 
   project String?
 
@@ -430,6 +443,10 @@ model Budget {
   limit Float
 
   period AlertPeriod
+
+  autoBlock Boolean @default(false)
+
+  alerts AlertConfig[]
 
   createdAt DateTime @default(now())
 
