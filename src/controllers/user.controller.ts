@@ -24,6 +24,8 @@ export class UserController {
     this.createOwner = this.createOwner.bind(this);
     this.assignScope = this.assignScope.bind(this);
     this.listUsers = this.listUsers.bind(this);
+    this.updateUser = this.updateUser.bind(this);
+    this.deleteUser = this.deleteUser.bind(this);
 
   }
 
@@ -641,4 +643,138 @@ export class UserController {
     }
   }
 
+  async updateUser(
+    request: AuthenticatedRequest,
+    reply: FastifyReply
+  ) {
+    try {
+      const actor = request.user;
+      if (!actor) {
+        return reply.status(401).send({ error: 'Unauthorized' });
+      }
+
+      const { id } = request.params as { id: string };
+      const { email, name, role, scopeId, password } = request.body as {
+        email?: string;
+        name?: string;
+        role?: UserRole;
+        scopeId?: string | null;
+        password?: string;
+      };
+
+      const existingUser = await prisma.user.findUnique({
+        where: { id },
+      });
+
+      if (!existingUser) {
+        return reply.status(404).send({ error: 'Usuário não encontrado' });
+      }
+
+      if (actor.role !== 'ADMIN' && existingUser.tenantId !== actor.tenantId) {
+        return reply.status(403).send({ error: 'Você não tem permissão para editar usuários deste tenant' });
+      }
+
+      if (role && role !== existingUser.role) {
+        if (!this.validateRoleCreation(actor.role, role)) {
+          return reply.status(403).send({ error: 'Você não tem permissão para atribuir este papel' });
+        }
+      }
+
+      let normalizedEmail = existingUser.email;
+      if (email && email.trim() && email.trim().toLowerCase() !== existingUser.email) {
+        normalizedEmail = email.trim().toLowerCase();
+        const emailCheck = await prisma.user.findUnique({
+          where: { email: normalizedEmail },
+        });
+        if (emailCheck) {
+          return reply.status(409).send({ error: 'Já existe um usuário com este e-mail' });
+        }
+      }
+
+      const updateData: any = {
+        name: name !== undefined ? name.trim() : existingUser.name,
+        email: normalizedEmail,
+      };
+
+      if (role) {
+        updateData.role = role;
+      }
+
+      if (scopeId !== undefined) {
+        updateData.scopeId = scopeId && scopeId !== 'none' ? scopeId.trim() : null;
+      }
+
+      if (password && password.trim()) {
+        updateData.passwordHash = await this.hashPassword(password.trim());
+      }
+
+      const updatedUser = await prisma.user.update({
+        where: { id },
+        data: updateData,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          tenantId: true,
+          scopeId: true,
+          createdAt: true,
+          scope: {
+            select: {
+              id: true,
+              name: true,
+              mode: true,
+            },
+          },
+        },
+      });
+
+      return reply.status(200).send({
+        message: 'Usuário atualizado com sucesso',
+        user: updatedUser,
+      });
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(400).send({ error: 'Erro ao atualizar usuário' });
+    }
+  }
+
+  async deleteUser(
+    request: AuthenticatedRequest,
+    reply: FastifyReply
+  ) {
+    try {
+      const actor = request.user;
+      if (!actor) {
+        return reply.status(401).send({ error: 'Unauthorized' });
+      }
+
+      const { id } = request.params as { id: string };
+
+      if (actor.id === id) {
+        return reply.status(400).send({ error: 'Você não pode excluir sua própria conta' });
+      }
+
+      const existingUser = await prisma.user.findUnique({
+        where: { id },
+      });
+
+      if (!existingUser) {
+        return reply.status(404).send({ error: 'Usuário não encontrado' });
+      }
+
+      if (actor.role !== 'ADMIN' && existingUser.tenantId !== actor.tenantId) {
+        return reply.status(403).send({ error: 'Você não tem permissão para excluir usuários deste tenant' });
+      }
+
+      await prisma.user.delete({
+        where: { id },
+      });
+
+      return reply.status(200).send({ message: 'Usuário excluído com sucesso' });
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(400).send({ error: 'Erro ao excluir usuário' });
+    }
+  }
 }

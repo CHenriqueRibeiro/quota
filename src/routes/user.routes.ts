@@ -71,4 +71,44 @@ export async function userRoutes(
     userController.listUsers
   );
 
+  server.put(
+    '/users/:id',
+    {
+      preHandler: [
+        authenticate
+      ]
+    },
+    userController.updateUser
+  );
+
+  server.put(
+    '/tenants/:tenantId/users/:id',
+    {
+      preHandler: [
+        authenticate
+      ]
+    },
+    userController.updateUser
+  );
+
+  server.delete(
+    '/users/:id',
+    {
+      preHandler: [
+        authenticate
+      ]
+    },
+    userController.deleteUser
+  );
+
+  server.delete(
+    '/tenants/:tenantId/users/:id',
+    {
+      preHandler: [
+        authenticate
+      ]
+    },
+    userController.deleteUser
+  );
+
 }
