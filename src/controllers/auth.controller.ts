@@ -19,20 +19,36 @@ const getFrontendUrl = () => {
 export class AuthController {
   async login(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const { email, password } = request.body as { 
-        email: string; 
-        password: string 
-      };
+      const body = (request.body || {}) as { email?: string; password?: string };
+      const email = body.email?.toLowerCase().trim();
+      const password = body.password;
+
+      if (!email || !password) {
+        return reply.status(400).send({
+          error: 'E-mail e senha são obrigatórios'
+        });
+      }
 
       const user = await prisma.user.findUnique({ 
         where: { email } 
       });
 
-      if (!user || !(await argon2.verify(user.passwordHash, password))) {
+      let isPasswordValid = false;
+      if (user && user.passwordHash) {
+        try {
+          isPasswordValid = await argon2.verify(user.passwordHash, password);
+        } catch (argonErr) {
+          request.log.error(argonErr, 'Argon2 verification error');
+        }
+      }
+
+      if (!user || !isPasswordValid) {
         return reply.status(401).send({ 
           error: 'Invalid credentials' 
         });
       }
+
+      const secret = process.env.JWT_SECRET || 'quota-default-jwt-secret';
 
       const token = jwt.sign(
         { 
@@ -40,7 +56,7 @@ export class AuthController {
           role: user.role, 
           tenantId: user.tenantId 
         },
-        process.env.JWT_SECRET as string,
+        secret,
         { 
           expiresIn: '8h' 
         }
@@ -52,10 +68,12 @@ export class AuthController {
       });
 
     } catch (error) {
-      request.log.error({ error }, 'Login error');
+      request.log.error(error, 'Login error occurred');
       console.error('Login error:', error);
+      const details = error instanceof Error ? error.message : String(error);
       return reply.status(500).send({ 
-        error: 'Internal server error' 
+        error: 'Internal server error',
+        details
       });
     }
   }
