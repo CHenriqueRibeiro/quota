@@ -99,6 +99,13 @@ const start = async () => {
     await prisma.$connect();
     server.log.info('Conexão com o PostgreSQL via Prisma estabelecida com sucesso.');
 
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TYPE "Role" ADD VALUE IF NOT EXISTS 'ADMIN'`);
+      await prisma.$executeRawUnsafe(`ALTER TYPE "Role" ADD VALUE IF NOT EXISTS 'OWNER'`);
+    } catch (e) {
+      server.log.warn({ err: e }, 'Aviso ao sincronizar enum Role no PostgreSQL');
+    }
+
 
     const redisStatus = await redis.ping();
     server.log.info(`Redis status: ${redisStatus}`);
