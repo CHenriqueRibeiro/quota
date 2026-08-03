@@ -320,37 +320,27 @@ export class UserController {
         email,
         tenantId,
         name
-
       } = request.body as {
         email:string;
-        tenantId:string;
+        tenantId?:string;
         name?:string;
       };
 
-
-
-
+      const resolvedTenantId =
+        tenantId?.trim() ||
+        actor.tenantId;
 
       if(
         !email?.trim() ||
-        !tenantId?.trim()
+        !resolvedTenantId
       ){
-
         return reply.status(400).send({
           error:'email e tenantId são obrigatórios'
         });
-
       }
-
-
-
 
       const normalizedEmail =
         email.trim().toLowerCase();
-
-
-
-
 
       const existingUser =
         await prisma.user.findUnique({
@@ -359,24 +349,16 @@ export class UserController {
           }
         });
 
-
-
-
       if(existingUser){
-
         return reply.status(409).send({
           error:'Já existe um usuário com este e-mail'
         });
-
       }
-
-
-
 
       const tenant =
         await prisma.tenant.findUnique({
           where:{
-            id:tenantId
+            id:resolvedTenantId
           }
         });
 
@@ -417,7 +399,7 @@ export class UserController {
 
             passwordHash,
 
-            tenantId,
+            tenantId: resolvedTenantId,
 
             role:'ADMIN'
 
