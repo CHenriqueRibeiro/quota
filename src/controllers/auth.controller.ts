@@ -52,6 +52,8 @@ export class AuthController {
       });
 
     } catch (error) {
+      request.log.error({ error }, 'Login error');
+      console.error('Login error:', error);
       return reply.status(500).send({ 
         error: 'Internal server error' 
       });
@@ -242,6 +244,8 @@ export class AuthController {
         user: { id: user.id, role: user.role, tenantId: user.tenantId, name: user.name, email: user.email },
       });
     } catch (error) {
+      request.log.error({ error }, 'SSO Login error');
+      console.error('SSO Login error:', error);
       return reply.status(500).send({ error: 'Erro no login SSO' });
     }
   }
@@ -268,6 +272,8 @@ export class AuthController {
 
       return reply.send({ message: 'Senha atualizada com sucesso' });
     } catch (error) {
+      request.log.error({ error }, 'Update password error');
+      console.error('Update password error:', error);
       return reply.status(500).send({ error: 'Erro ao atualizar senha' });
     }
   }
