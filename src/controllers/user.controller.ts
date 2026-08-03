@@ -97,13 +97,14 @@ export class UserController {
         email,
         name,
         role,
-        tenantId
-
+        tenantId,
+        scopeId
       } = request.body as {
         email:string;
         name?:string;
         role:UserRole;
         tenantId?:string;
+        scopeId?:string;
       };
 
 
@@ -226,43 +227,27 @@ export class UserController {
 
       const user =
         await prisma.user.create({
-
           data:{
-
             email:normalizedEmail,
-
             name:
               name?.trim() ||
               normalizedEmail,
-
             passwordHash,
-
             tenantId:
               resolvedTenantId,
-
-            role
-
+            role,
+            scopeId: scopeId?.trim() || null
           }
-
         });
 
-
-
-
       return reply.status(201).send({
-
         message:'Usuário criado com sucesso',
-
         user:{
-
           id:user.id,
-
           email:user.email,
-
           tenantId:user.tenantId,
-
-          role:user.role
-
+          role:user.role,
+          scopeId:user.scopeId
         },
 
         defaultPassword:DEFAULT_PASSWORD

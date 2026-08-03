@@ -264,6 +264,7 @@ export class ReportsService {
         const name = row[nameIndex] || "";
         const email = (row[emailIndex] || "").toLowerCase();
         const role = (row[roleIndex] || "ANALYST").toUpperCase();
+        const validRole = ["ADMIN", "MANAGER", "ANALYST", "DEV"].includes(role) ? (role as any) : "ANALYST";
         const rawPassword = row[passwordIndex] || "Quota@123456";
         const scopeName = (row[scopeIndex] || "").trim();
 
@@ -287,13 +288,22 @@ export class ReportsService {
           if (matchedId) {
             scopeId = matchedId;
           } else {
-            errors.push(`Linha ${i + 1}: Escopo "${scopeName}" não foi encontrado (usuário cadastrado sem escopo).`);
+            errors.push(`Linha ${i + 1} (${email}): Escopo "${scopeName}" não encontrado no tenant.`);
+          }
+        }
+
+        // Se o usuário não é ADMIN nem MANAGER e não foi informado escopo, associa o primeiro escopo se houver ou gera aviso
+        const defaultScope = existingScopes[0];
+        if (!scopeId && validRole !== "ADMIN" && validRole !== "MANAGER") {
+          if (defaultScope) {
+            scopeId = defaultScope.id;
+            errors.push(`Linha ${i + 1} (${email}): Atribuído escopo padrão "${defaultScope.name}" por falta de escopo informado.`);
+          } else {
+            errors.push(`Linha ${i + 1} (${email}): Usuário ${validRole} cadastrado sem escopo (nenhum escopo disponível no tenant).`);
           }
         }
 
         const hashedPassword = await argon2.hash(rawPassword);
-
-        const validRole = ["ADMIN", "MANAGER", "ANALYST", "DEV"].includes(role) ? (role as any) : "ANALYST";
 
         await prisma.user.create({
           data: {

@@ -468,15 +468,13 @@ class ScopeService {
 
 
     if (!scope) {
-
-
-      throw new Error(
-
-        "Usuário não possui Scope."
-
-      );
-
-
+      return {
+        tenantId: user.tenantId,
+        createdAt: {
+          gte: startDate,
+          lte: endDate
+        }
+      };
     }
 
 
