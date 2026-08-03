@@ -48,9 +48,13 @@ export class AnalyticsController {
       ? new Date(query.startDate)
       : startOfMonth;
 
-    const endDate = query.endDate
-      ? new Date(query.endDate)
-      : now;
+    let endDate = now;
+    if (query.endDate) {
+      endDate = new Date(query.endDate);
+      if (query.endDate.length <= 10) {
+        endDate.setUTCHours(23, 59, 59, 999);
+      }
+    }
 
     const where =
       await ScopeService.buildWhere(
