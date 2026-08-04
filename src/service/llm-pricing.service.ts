@@ -5,9 +5,14 @@ export interface LLMPriceItem {
   id: string;
   vendor: string;
   name: string;
+  /** Preço por 1 milhão de tokens de input (USD) */
   input: number;
+  /** Preço por 1 milhão de tokens de output (USD) */
   output: number;
+  /** Preço por 1 milhão de tokens de leitura em cache (USD) — null se não suportado */
   input_cached: number | null;
+  /** Preço por 1 milhão de tokens de escrita em cache (USD) — null se não suportado */
+  input_cache_write: number | null;
 }
 
 export interface LLMPricesCacheData {
@@ -15,14 +20,40 @@ export interface LLMPricesCacheData {
   lastSyncTimestamp: number;
   nextSyncDueDate: string;
   totalModels: number;
+  /** Lista de vendors únicos presentes no cache — gerada dinamicamente no sync */
   supportedVendors: string[];
   modelsByProvider: Record<string, Array<{ id: string; name: string; input: number; output: number; input_cached: number | null }>>;
   prices: LLMPriceItem[];
 }
 
-const SUPPORTED_VENDORS = ["openai", "anthropic", "google", "groq", "mistral"];
 const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
 const CACHE_FILE_PATH = path.join(process.cwd(), "data", "llm-prices-cache.json");
+
+/**
+ * Converte o preço por token do OpenRouter para preço por 1 milhão de tokens.
+ * OpenRouter retorna strings como "0.000002" (= $2 / MTok).
+ */
+function perTokenToPerMillion(value: string | number | null | undefined): number {
+  if (value === null || value === undefined || value === "") return 0;
+  return Number(value) * 1_000_000;
+}
+
+/**
+ * Extrai o vendor do ID do modelo do OpenRouter.
+ * Ex: "anthropic/claude-sonnet-5" → "anthropic"
+ */
+function extractVendor(modelId: string): string {
+  return modelId.split("/")[0]?.toLowerCase().trim() ?? "";
+}
+
+/**
+ * Extrai o slug do modelo sem o prefixo do vendor.
+ * Ex: "anthropic/claude-sonnet-5" → "claude-sonnet-5"
+ */
+function extractModelSlug(modelId: string): string {
+  const parts = modelId.split("/");
+  return (parts.length > 1 ? parts.slice(1).join("/") : (parts[0] ?? "")).toLowerCase().trim();
+}
 
 class LLMPricingService {
   private cache: LLMPricesCacheData | null = null;
@@ -63,38 +94,68 @@ class LLMPricingService {
     this.isSyncing = true;
 
     try {
-      console.log("🔄 Buscando preços atualizados de LLM de https://www.llm-prices.com/current-v1.json...");
-      const response = await fetch("https://www.llm-prices.com/current-v1.json", {
+      console.log("🔄 Buscando preços atualizados de LLM de https://openrouter.ai/api/v1/models...");
+      const response = await fetch("https://openrouter.ai/api/v1/models", {
         headers: { "User-Agent": "Quota-IA/1.0" }
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status} ao buscar preços de llm-prices.com`);
+        throw new Error(`HTTP ${response.status} ao buscar preços de openrouter.ai`);
       }
 
       const rawData = await response.json() as any;
-      const rawPrices: LLMPriceItem[] = Array.isArray(rawData?.prices) ? rawData.prices : [];
+      const rawModels: any[] = Array.isArray(rawData?.data) ? rawData.data : [];
 
-      // Filtra apenas os provedores aceitos na nossa plataforma
-      const filteredPrices = rawPrices.filter((p) =>
-        SUPPORTED_VENDORS.includes(p.vendor?.toLowerCase()?.trim())
-      );
+      const filteredPrices: LLMPriceItem[] = [];
 
+      for (const model of rawModels) {
+        const vendor = extractVendor(model.id ?? "");
+        if (!vendor) continue;
+
+        const pricing = model.pricing;
+        if (!pricing) continue;
+
+        // Converte de preço por token → por 1 milhão de tokens
+        const inputPerM = perTokenToPerMillion(pricing.prompt);
+        const outputPerM = perTokenToPerMillion(pricing.completion);
+
+        // Modelos com preço zero em input E output são roteadores/agregadores — ignora
+        if (inputPerM === 0 && outputPerM === 0) continue;
+
+        const cacheReadPerM = pricing.input_cache_read != null
+          ? perTokenToPerMillion(pricing.input_cache_read)
+          : null;
+
+        const cacheWritePerM = pricing.input_cache_write != null
+          ? perTokenToPerMillion(pricing.input_cache_write)
+          : null;
+
+        filteredPrices.push({
+          id: model.id,
+          vendor,
+          name: model.name ?? model.id,
+          input: inputPerM,
+          output: outputPerM,
+          input_cached: cacheReadPerM,
+          input_cache_write: cacheWritePerM,
+        });
+      }
+
+      // Agrupa por provider para facilitar exibição no frontend
       const modelsByProvider: Record<string, Array<{ id: string; name: string; input: number; output: number; input_cached: number | null }>> = {};
 
       for (const p of filteredPrices) {
-        const v = p.vendor.toLowerCase().trim();
-        if (!modelsByProvider[v]) {
-          modelsByProvider[v] = [];
-        }
-        modelsByProvider[v].push({
+        (modelsByProvider[p.vendor] ??= []).push({
           id: p.id,
           name: p.name,
           input: p.input,
           output: p.output,
-          input_cached: p.input_cached
+          input_cached: p.input_cached,
         });
       }
+
+      // Lista dinâmica de vendors presentes (não mais uma lista fixa hardcodada)
+      const syncedVendors = [...new Set(filteredPrices.map((p) => p.vendor))].sort();
 
       const now = Date.now();
       const nextSyncDueDate = new Date(now + FIVE_DAYS_MS).toISOString();
@@ -104,17 +165,21 @@ class LLMPricingService {
         lastSyncTimestamp: now,
         nextSyncDueDate,
         totalModels: filteredPrices.length,
-        supportedVendors: SUPPORTED_VENDORS,
+        supportedVendors: syncedVendors,
         modelsByProvider,
-        prices: filteredPrices
+        prices: filteredPrices,
       };
 
       this.saveCacheToFile(cacheData);
-      console.log(`✅ Preços de LLM sincronizados com sucesso! (${filteredPrices.length} modelos mantidos dos provedores aceitos). Próxima atualização: ${nextSyncDueDate}`);
+      console.log(
+        `✅ Preços de LLM sincronizados com sucesso via OpenRouter! ` +
+        `(${filteredPrices.length} modelos de ${syncedVendors.length} vendors). ` +
+        `Próxima atualização: ${nextSyncDueDate}`
+      );
 
       return cacheData;
     } catch (error) {
-      console.error("❌ Erro ao sincronizar preços com llm-prices.com:", error);
+      console.error("❌ Erro ao sincronizar preços com openrouter.ai:", error);
       if (this.cache) return this.cache;
       throw error;
     } finally {
@@ -156,52 +221,56 @@ class LLMPricingService {
 
     const pricesList = this.cache?.prices || [];
 
-    // Tenta encontrar correspondência exata do ID do modelo
+    // 1. Correspondência exata pelo ID completo (ex: "anthropic/claude-sonnet-5")
     let found = pricesList.find(
       (p) => p.id.toLowerCase() === normalizedModel
     );
 
-    // Se não encontrou por ID exato, tenta por nome ou vendor + sufixo de modelo
+    // 2. Correspondência pelo slug do modelo sem o vendor (ex: "claude-sonnet-5")
     if (!found) {
       found = pricesList.find(
         (p) =>
           (normalizedVendor ? p.vendor.toLowerCase() === normalizedVendor : true) &&
-          (p.id.toLowerCase().includes(normalizedModel) || normalizedModel.includes(p.id.toLowerCase()) || p.name.toLowerCase().includes(normalizedModel))
+          extractModelSlug(p.id) === normalizedModel
+      );
+    }
+
+    // 3. Correspondência parcial por inclusão no ID ou no nome
+    if (!found) {
+      found = pricesList.find(
+        (p) =>
+          (normalizedVendor ? p.vendor.toLowerCase() === normalizedVendor : true) &&
+          (
+            p.id.toLowerCase().includes(normalizedModel) ||
+            normalizedModel.includes(extractModelSlug(p.id)) ||
+            p.name.toLowerCase().includes(normalizedModel)
+          )
       );
     }
 
     if (found) {
       const inputPricePerM = Number(found.input ?? 0);
       const outputPricePerM = Number(found.output ?? 0);
-      const cachedPricePerM = found.input_cached !== null && found.input_cached !== undefined
+      // Para leitura de cache usa input_cached; se não disponível usa preço normal de input
+      const cacheReadPerM = found.input_cached !== null && found.input_cached !== undefined
         ? Number(found.input_cached)
         : inputPricePerM;
 
       const uncachedPrompt = Math.max(0, promptTokens - cachedTokens);
       const promptCost = (uncachedPrompt / 1_000_000) * inputPricePerM;
-      const cachedCost = (cachedTokens / 1_000_000) * cachedPricePerM;
+      const cachedCost = (cachedTokens / 1_000_000) * cacheReadPerM;
       const completionCost = (completionTokens / 1_000_000) * outputPricePerM;
 
       const totalCost = promptCost + cachedCost + completionCost;
       return Number(totalCost.toFixed(6));
     }
 
-    // Fallbacks padronizados se modelo específico não constar no repositório
-    let fallbackInputPerM = 2.5; // ex: $2.50 / 1M tokens
-    let fallbackOutputPerM = 10.0; // ex: $10.00 / 1M tokens
-
-    if (normalizedModel.includes("gpt-4o-mini") || normalizedModel.includes("haiku") || normalizedModel.includes("flash") || normalizedModel.includes("micro")) {
-      fallbackInputPerM = 0.15;
-      fallbackOutputPerM = 0.60;
-    } else if (normalizedModel.includes("mini") || normalizedModel.includes("small") || normalizedModel.includes("lite")) {
-      fallbackInputPerM = 0.50;
-      fallbackOutputPerM = 1.50;
-    }
-
-    const promptCost = (promptTokens / 1_000_000) * fallbackInputPerM;
-    const completionCost = (completionTokens / 1_000_000) * fallbackOutputPerM;
-
-    return Number((promptCost + completionCost).toFixed(6));
+    // Modelo não cadastrado na tabela de preços — retorna 0 sem inventar valores
+    console.warn(
+      `⚠️ Modelo não encontrado na tabela de preços: provider="${provider ?? ""}", model="${model}". ` +
+      `Custo registrado como 0. Execute /llm-prices/sync para atualizar a tabela.`
+    );
+    return 0;
   }
 }
 

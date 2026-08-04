@@ -16,12 +16,12 @@ class LLMPricingController {
     try {
       const data = await llmPricingService.syncPrices();
       return reply.status(200).send({
-        message: "Tabela de preços de LLM atualizada com sucesso a partir de llm-prices.com",
+        message: "Tabela de preços de LLM atualizada com sucesso a partir de openrouter.ai",
         data
       });
     } catch (error: any) {
       request.log.error(error);
-      return reply.status(500).send({ error: "Erro ao sincronizar preços com llm-prices.com" });
+      return reply.status(500).send({ error: "Erro ao sincronizar preços com openrouter.ai" });
     }
   }
 }
