@@ -1108,31 +1108,18 @@ class TopicService {
 
         body:{
 
-          messages:[
-
+          messages: [
+            ...(assistant.systemPrompt?.trim()
+              ? [{ role: "system", content: assistant.systemPrompt.trim() }]
+              : []),
             {
-
-              role:"system",
-
-              content:assistant.systemPrompt
-
+              role: "user",
+              content: userPrompt,
             },
-
-            {
-
-              role:"user",
-
-              content:userPrompt
-
-            }
-
           ],
 
           temperature:assistant.temperature,
-
-          max_tokens:assistant.maxTokens,
-
-          maxTokens:assistant.maxTokens
+          max_tokens:assistant.maxTokens
 
         }
 

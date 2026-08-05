@@ -326,36 +326,27 @@ async create(
 }
 
   private validateDomain(
-    origin:string,
-    allowedDomains:any
-  ){
-
-    try{
-
-      const url = new URL(origin);
-
-      const hostname =
-        url.hostname;
-
-
-      if(!Array.isArray(allowedDomains)){
-        return false;
+    origin: string,
+    allowedDomains: any
+  ) {
+    try {
+      if (!Array.isArray(allowedDomains) || allowedDomains.length === 0) {
+        return true;
       }
 
+      const url = new URL(origin);
+      const hostname = url.hostname;
 
       return allowedDomains.some(
-        (domain:string)=>
+        (domain: string) =>
+          domain === "*" ||
           hostname === domain ||
-          hostname.endsWith(`.${domain}`)
+          hostname.endsWith(`.${domain}`) ||
+          hostname === "localhost"
       );
-
-
-    }catch{
-
+    } catch {
       return false;
-
     }
-
   }
 
   async publicInfo(

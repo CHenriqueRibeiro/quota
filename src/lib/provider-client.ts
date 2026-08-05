@@ -188,6 +188,13 @@ export async function callProvider(
     delete requestBody.frequency_penalty;
   }
 
+  if (requestBody.maxTokens !== undefined) {
+    if (requestBody.max_tokens === undefined) {
+      requestBody.max_tokens = requestBody.maxTokens;
+    }
+    delete requestBody.maxTokens;
+  }
+
 
 
   /**

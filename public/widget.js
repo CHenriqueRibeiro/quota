@@ -273,10 +273,10 @@
         state.widget?.logo || ICON_URL
           ? h("img", { src: state.widget?.logo || ICON_URL, alt: "" })
           : h(
-              "svg",
-              { width: "22", height: "22", viewBox: "0 0 24 24", fill: "none", stroke: "#fff", "stroke-width": "2" },
-              h("path", { d: "M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" })
-            )
+            "svg",
+            { width: "22", height: "22", viewBox: "0 0 24 24", fill: "none", stroke: "#fff", "stroke-width": "2" },
+            h("path", { d: "M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" })
+          )
       );
       left.appendChild(logo);
     }
@@ -382,10 +382,10 @@
           topic.description ? h("div", { class: "qw-card-desc" }, topic.description) : null,
           isExpanded
             ? h(
-                "div",
-                { class: "qw-topic-answer" },
-                answerText || "Carregando resposta do tópico..."
-              )
+              "div",
+              { class: "qw-topic-answer" },
+              answerText || "Carregando resposta do tópico..."
+            )
             : null
         );
 
@@ -393,7 +393,7 @@
       });
     }
 
-    const branding = h("div", { class: "qw-branding" }, "Desenvolvido com Quota IA");
+    const branding = h("div", { class: "qw-branding" }, "Desenvolvido por Quota");
     setPanel(header, body, branding);
   };
 
