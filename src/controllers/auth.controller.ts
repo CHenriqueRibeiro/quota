@@ -79,16 +79,34 @@ export class AuthController {
   }
 
   async googleRedirect(request: FastifyRequest, reply: FastifyReply) {
+    const { redirect_url, state: queryState } = request.query as { redirect_url?: string; state?: string };
+    // Captura a URL do frontend que chamou (web ou app) ou usa a padrão
+    const rawTarget = redirect_url || queryState || getFrontendUrl();
+    const state = encodeURIComponent(rawTarget);
+
     const clientId = process.env.GOOGLE_CLIENT_ID || 'dummy-google-client-id';
     const redirectUri = encodeURIComponent(`${getBackendUrl(request)}/auth/google/callback`);
     const scope = encodeURIComponent('openid profile email');
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&prompt=select_account`;
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&state=${state}&prompt=select_account`;
     return reply.redirect(googleAuthUrl);
   }
 
   async googleCallback(request: FastifyRequest, reply: FastifyReply) {
-    const { code, error: oauthError } = request.query as { code?: string; error?: string };
-    const frontendUrl = getFrontendUrl();
+    const { code, error: oauthError, state } = request.query as { code?: string; error?: string; state?: string };
+    
+    // Determina dinamicamente o frontend de destino
+    let frontendUrl = getFrontendUrl();
+    if (state) {
+      try {
+        const decoded = decodeURIComponent(state);
+        if (decoded.startsWith('http://') || decoded.startsWith('https://')) {
+          // Remove /login no final se já vier no state para não duplicar
+          frontendUrl = decoded.replace(/\/login\/?$/, '').replace(/\/+$/, '');
+        }
+      } catch (e) {
+        // fallback para o padrão se falhar
+      }
+    }
 
     if (oauthError || !code) {
       return reply.redirect(`${frontendUrl}/login?error=${encodeURIComponent(oauthError || 'Falha no login com Google')}`);
@@ -156,16 +174,31 @@ export class AuthController {
   }
 
   async microsoftRedirect(request: FastifyRequest, reply: FastifyReply) {
+    const { redirect_url, state: queryState } = request.query as { redirect_url?: string; state?: string };
+    const rawTarget = redirect_url || queryState || getFrontendUrl();
+    const state = encodeURIComponent(rawTarget);
+
     const clientId = process.env.MICROSOFT_CLIENT_ID || 'dummy-ms-client-id';
     const redirectUri = encodeURIComponent(`${getBackendUrl(request)}/auth/microsoft/callback`);
     const scope = encodeURIComponent('openid profile email User.Read');
-    const msAuthUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=${scope}&prompt=select_account`;
+    const msAuthUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=${scope}&state=${state}&prompt=select_account`;
     return reply.redirect(msAuthUrl);
   }
 
   async microsoftCallback(request: FastifyRequest, reply: FastifyReply) {
-    const { code, error: oauthError } = request.query as { code?: string; error?: string };
-    const frontendUrl = getFrontendUrl();
+    const { code, error: oauthError, state } = request.query as { code?: string; error?: string; state?: string };
+    
+    let frontendUrl = getFrontendUrl();
+    if (state) {
+      try {
+        const decoded = decodeURIComponent(state);
+        if (decoded.startsWith('http://') || decoded.startsWith('https://')) {
+          frontendUrl = decoded.replace(/\/login\/?$/, '').replace(/\/+$/, '');
+        }
+      } catch (e) {
+        // fallback
+      }
+    }
 
     if (oauthError || !code) {
       return reply.redirect(`${frontendUrl}/login?error=${encodeURIComponent(oauthError || 'Falha no login com Microsoft')}`);
