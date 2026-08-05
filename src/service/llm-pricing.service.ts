@@ -13,6 +13,9 @@ export interface LLMPriceItem {
   input_cached: number | null;
   /** Preço por 1 milhão de tokens de escrita em cache (USD) — null se não suportado */
   input_cache_write: number | null;
+  /** Flag indicando se o modelo aceita o parâmetro temperature */
+  supports_temperature: boolean;
+  supported_parameters?: string[];
 }
 
 export interface LLMPricesCacheData {
@@ -22,7 +25,7 @@ export interface LLMPricesCacheData {
   totalModels: number;
   /** Lista de vendors únicos presentes no cache — gerada dinamicamente no sync */
   supportedVendors: string[];
-  modelsByProvider: Record<string, Array<{ id: string; name: string; input: number; output: number; input_cached: number | null }>>;
+  modelsByProvider: Record<string, Array<{ id: string; name: string; input: number; output: number; input_cached: number | null; supports_temperature: boolean }>>;
   prices: LLMPriceItem[];
 }
 
@@ -130,6 +133,14 @@ class LLMPricingService {
           ? perTokenToPerMillion(pricing.input_cache_write)
           : null;
 
+        // Detecção de suporte a temperatura via default_parameters e supported_parameters
+        const supportedParams: string[] = Array.isArray(model.supported_parameters) ? model.supported_parameters : [];
+        const defaultParams = model.default_parameters ?? {};
+
+        const hasTempInSupported = supportedParams.length > 0 ? supportedParams.includes("temperature") : true;
+        const isTempNullInDefault = defaultParams.temperature === null;
+        const supportsTemperature = hasTempInSupported && !isTempNullInDefault;
+
         filteredPrices.push({
           id: model.id,
           vendor,
@@ -138,11 +149,13 @@ class LLMPricingService {
           output: outputPerM,
           input_cached: cacheReadPerM,
           input_cache_write: cacheWritePerM,
+          supports_temperature: supportsTemperature,
+          supported_parameters: supportedParams,
         });
       }
 
       // Agrupa por provider para facilitar exibição no frontend
-      const modelsByProvider: Record<string, Array<{ id: string; name: string; input: number; output: number; input_cached: number | null }>> = {};
+      const modelsByProvider: Record<string, Array<{ id: string; name: string; input: number; output: number; input_cached: number | null; supports_temperature: boolean }>> = {};
 
       for (const p of filteredPrices) {
         (modelsByProvider[p.vendor] ??= []).push({
@@ -151,6 +164,7 @@ class LLMPricingService {
           input: p.input,
           output: p.output,
           input_cached: p.input_cached,
+          supports_temperature: p.supports_temperature,
         });
       }
 
@@ -271,6 +285,46 @@ class LLMPricingService {
       `Custo registrado como 0. Execute /llm-prices/sync para atualizar a tabela.`
     );
     return 0;
+  }
+
+  supportsTemperature(model: string, provider?: string): boolean {
+    if (!model) return true;
+    const normalizedVendor = (provider || "").toLowerCase().trim();
+    const normalizedModel = model.toLowerCase().trim();
+    const pricesList = this.cache?.prices || [];
+
+    let found = pricesList.find((p) => p.id.toLowerCase() === normalizedModel);
+
+    if (!found) {
+      found = pricesList.find(
+        (p) =>
+          (normalizedVendor ? p.vendor.toLowerCase() === normalizedVendor : true) &&
+          extractModelSlug(p.id) === normalizedModel
+      );
+    }
+
+    if (!found) {
+      found = pricesList.find(
+        (p) =>
+          (normalizedVendor ? p.vendor.toLowerCase() === normalizedVendor : true) &&
+          (
+            p.id.toLowerCase().includes(normalizedModel) ||
+            normalizedModel.includes(extractModelSlug(p.id)) ||
+            p.name.toLowerCase().includes(normalizedModel)
+          )
+      );
+    }
+
+    if (found && typeof found.supports_temperature === "boolean") {
+      return found.supports_temperature;
+    }
+
+    // Fallback de segurança para modelos de raciocínio conhecidos
+    if (/^o[0-9]/i.test(normalizedModel) || /reasoning/i.test(normalizedModel)) {
+      return false;
+    }
+
+    return true;
   }
 }
 

@@ -1,4 +1,5 @@
 import type { SupportedProvider } from './providers';
+import llmPricingService from '../service/llm-pricing.service';
 
 export interface ProviderCallOptions {
   provider: SupportedProvider;
@@ -14,6 +15,9 @@ export interface ProviderCallResult {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  cachedTokens: number;
+  reasoningTokens: number;
+  cacheCreationTokens: number;
   latencyMs: number;
 }
 
@@ -106,10 +110,27 @@ function normalizeUsage(usage: any) {
   );
 
 
-  const totalTokens = Number(
-    usage?.total_tokens ??
-    usage?.totalTokenCount ??
-    (promptTokens + completionTokens)
+  // totalTokens é sempre calculado como promptTokens + completionTokens para consistência
+  const totalTokens = promptTokens + completionTokens;
+
+  // Extração de tokens cacheados (OpenAI, Gemini, Anthropic, Grok, Mistral)
+  const cachedTokens = Number(
+    usage?.prompt_tokens_details?.cached_tokens ??
+    usage?.cachedContentTokenCount ??
+    usage?.cache_read_input_tokens ??
+    0
+  );
+
+  // Extração de tokens de criação de cache (Anthropic)
+  const cacheCreationTokens = Number(
+    usage?.cache_creation_input_tokens ?? 0
+  );
+
+  // Extração de tokens de raciocínio / thinking (OpenAI o1/o3, Gemini thinking, Grok reasoning)
+  const reasoningTokens = Number(
+    usage?.completion_tokens_details?.reasoning_tokens ??
+    usage?.thoughtsTokenCount ??
+    0
   );
 
 
@@ -117,6 +138,9 @@ function normalizeUsage(usage: any) {
     promptTokens,
     completionTokens,
     totalTokens,
+    cachedTokens,
+    reasoningTokens,
+    cacheCreationTokens,
   };
 }
 
@@ -148,11 +172,21 @@ export async function callProvider(
   );
 
 
+  const supportsTemp = llmPricingService.supportsTemperature(model, provider);
 
   let requestBody = {
     ...body,
     model,
   };
+
+  // Se o modelo não suportar temperatura (ex: o1, o3, claude-opus-latest) ou se for explicitamente null,
+  // removemos a temperatura e parâmetros de amostragem incompatíveis
+  if (!supportsTemp || body?.temperature === null) {
+    delete requestBody.temperature;
+    delete requestBody.top_p;
+    delete requestBody.presence_penalty;
+    delete requestBody.frequency_penalty;
+  }
 
 
 
@@ -173,6 +207,16 @@ export async function callProvider(
         : body?.prompt ?? '';
 
 
+    const generationConfig: Record<string, any> = {};
+
+    if (supportsTemp && body?.temperature != null) {
+      generationConfig.temperature = body.temperature;
+    }
+
+    if (body?.max_tokens != null || body?.maxTokens != null) {
+      generationConfig.maxOutputTokens = body?.max_tokens ?? body?.maxTokens;
+    }
+
 
     requestBody = {
       contents: [
@@ -184,6 +228,7 @@ export async function callProvider(
           ],
         },
       ],
+      ...(Object.keys(generationConfig).length > 0 && { generationConfig }),
     } as any;
 
   }
@@ -248,5 +293,14 @@ export async function callProvider(
 
     totalTokens:
       normalizedUsage.totalTokens,
+
+    cachedTokens:
+      normalizedUsage.cachedTokens,
+
+    reasoningTokens:
+      normalizedUsage.reasoningTokens,
+
+    cacheCreationTokens:
+      normalizedUsage.cacheCreationTokens,
   };
 }

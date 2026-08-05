@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics - Logs de Requisições LLM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --success-bg: rgba(34, 197, 94, 0.15);
+      --success-text: #4ade80;
+      --danger-bg: rgba(239, 68, 68, 0.15);
+      --danger-text: #f87171;
+      --badge-bg: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 2rem;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #a5b4fc 0%, #6366f1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .token-config {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      background: var(--card-bg);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+    }
+
+    .token-config input {
+      background: var(--bg-color);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      outline: none;
+      font-size: 0.875rem;
+      width: 260px;
+    }
+
+    .controls-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .filter-group label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    select, input[type="text"], input[type="date"] {
+      background-color: var(--bg-color);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.5rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      outline: none;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--primary);
+    }
+
+    .btn {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.55rem 1.2rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: background-color 0.2s;
+    }
+
+    .btn:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background-color: var(--card-border);
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+      background-color: #475569;
+    }
+
+    .table-container {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow-x: auto;
+      margin-bottom: 1.5rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.875rem;
+    }
+
+    th {
+      background-color: rgba(15, 23, 42, 0.6);
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 1rem;
+      border-bottom: 1px solid var(--card-border);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+      color: var(--text-main);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-success {
+      background-color: var(--success-bg);
+      color: var(--success-text);
+    }
+
+    .badge-danger {
+      background-color: var(--danger-bg);
+      color: var(--danger-text);
+    }
+
+    .badge-provider {
+      background-color: var(--badge-bg);
+      color: #cbd5e1;
+    }
+
+    .tokens-detail {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      font-size: 0.8rem;
+    }
+
+    .tokens-sub {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .pagination-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+    }
+
+    .pagination-info {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    .pagination-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    /* Modal Json */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.75);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      width: 90%;
+      max-width: 800px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      overflow-y: auto;
+    }
+
+    pre {
+      background-color: var(--bg-color);
+      padding: 1rem;
+      border-radius: 8px;
+      color: #38bdf8;
+      font-family: monospace;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .close-btn:hover {
+      color: white;
+    }
+
+    .loading-spinner {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>Logs de Requisições - Analytics</h1>
+      <div class="token-config">
+        <label style="font-size: 0.75rem; color: var(--text-muted)">TOKEN AUTH:</label>
+        <input type="password" id="authToken" placeholder="Cole seu Bearer JWT token aqui..." />
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="controls-card">
+      <div class="filter-group" style="flex: 1; min-width: 200px;">
+        <label>Busca Textual</label>
+        <input type="text" id="searchInput" placeholder="Search (traceId, model, agent...)" />
+      </div>
+
+      <div class="filter-group">
+        <label>Provedor</label>
+        <select id="providerSelect">
+          <option value="">Todos</option>
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="google">Google</option>
+          <option value="groq">Groq</option>
+          <option value="mistral">Mistral</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Status</label>
+        <select id="successSelect">
+          <option value="">Todos</option>
+          <option value="true">Sucesso (2xx)</option>
+          <option value="false">Erro (4xx/5xx)</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Por Página</label>
+        <select id="limitSelect">
+          <option value="10">10</option>
+          <option value="20" selected>20</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+
+      <div class="filter-group" style="align-self: flex-end;">
+        <button class="btn" id="btnFilter">Filtrar</button>
+      </div>
+    </div>
+
+    <!-- Tabela de Logs -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Data / Hora</th>
+            <th>Provedor & Modelo</th>
+            <th>Status</th>
+            <th>Latência</th>
+            <th>Tokens (P / C / Total)</th>
+            <th>Detalhes de Token</th>
+            <th>Custo ($)</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="logsTableBody">
+          <tr>
+            <td colspan="8" class="loading-spinner">Insira seu Token JWT acima e clique em "Filtrar" para carregar os logs.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginação -->
+    <div class="pagination-bar">
+      <div class="pagination-info" id="paginationInfo">Mostrando 0 de 0 registros</div>
+      <div class="pagination-actions">
+        <button class="btn btn-secondary" id="btnPrev" disabled>Anterior</button>
+        <span id="pageIndicator" style="font-size: 0.875rem; font-weight: 600; padding: 0 0.5rem;">Página 1 de 1</span>
+        <button class="btn btn-secondary" id="btnNext" disabled>Próximo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Detalhes JSON -->
+  <div class="modal-overlay" id="jsonModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="font-size: 1.1rem;">Detalhes da Requisição Log</h3>
+        <button class="close-btn" id="btnCloseModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <pre id="jsonContent"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentPage = 1;
+    let totalPages = 1;
+
+    // Carregar token salvo
+    const tokenInput = document.getElementById('authToken');
+    tokenInput.value = localStorage.getItem('authToken') || '';
+    tokenInput.addEventListener('change', () => {
+      localStorage.setItem('authToken', tokenInput.value.trim());
+    });
+
+    async function fetchLogs(page = 1) {
+      const token = tokenInput.value.trim();
+      const tbody = document.getElementById('logsTableBody');
+
+      if (!token) {
+        tbody.innerHTML = `<tr><td colspan="8" class="loading-spinner" style="color: var(--danger-text)">Por favor, insira o Token JWT de autorização para buscar os logs.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-spinner">Carregando logs...</td></tr>`;
+
+      const search = document.getElementById('searchInput').value.trim();
+      const provider = document.getElementById('providerSelect').value;
+      const success = document.getElementById('successSelect').value;
+      const limit = document.getElementById('limitSelect').value;
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+
+      if (search) params.append('search', search);
+      if (provider) params.append('provider', provider);
+      if (success) params.append('success', success);
+
+      try {
+        const response = await fetch(`/analytics/logs?${params.toString()}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.message || `Erro HTTP ${response.status}`);
+        }
+
+        const res = await response.json();
+        renderLogs(res.data);
+        renderPagination(res.meta);
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="loading-spinner" style="color: var(--danger-text)">Erro ao carregar logs: ${err.message}</td></tr>`;
+      }
+    }
+
+    function renderLogs(logs) {
+      const tbody = document.getElementById('logsTableBody');
+      if (!logs || logs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="loading-spinner">Nenhum log de requisição encontrado.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = logs.map(log => {
+        const formattedDate = new Date(log.createdAt).toLocaleString('pt-BR');
+        const statusBadge = log.success
+          ? `<span class="badge badge-success">${log.statusCode || 200} OK</span>`
+          : `<span class="badge badge-danger">${log.statusCode || 500} ERRO</span>`;
+
+        const costFormatted = `$${Number(log.estimatedCost || 0).toFixed(6)}`;
+
+        return `
+          <tr>
+            <td style="white-space: nowrap;">${formattedDate}</td>
+            <td>
+              <span class="badge badge-provider">${log.provider || 'N/A'}</span>
+              <div style="font-weight: 600; margin-top: 0.2rem;">${log.model}</div>
+            </td>
+            <td>${statusBadge}</td>
+            <td>${log.latencyMs ? log.latencyMs + ' ms' : '-'}</td>
+            <td>
+              <div class="tokens-detail">
+                <span><strong>Total:</strong> ${log.totalTokens}</span>
+                <span class="tokens-sub">Prompt: ${log.promptTokens} | Compl: ${log.completionTokens}</span>
+              </div>
+            </td>
+            <td>
+              <div class="tokens-detail tokens-sub">
+                ${log.cachedTokens > 0 ? `<span style="color: #38bdf8;">Cache: ${log.cachedTokens}</span>` : ''}
+                ${log.reasoningTokens > 0 ? `<span style="color: #c084fc;">Raciocínio: ${log.reasoningTokens}</span>` : ''}
+                ${log.cachedTokens === 0 && log.reasoningTokens === 0 ? '-' : ''}
+              </div>
+            </td>
+            <td style="font-weight: 600; color: #34d399;">${costFormatted}</td>
+            <td>
+              <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" onclick='openModal(${JSON.stringify(log)})'>Detalhes</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderPagination(meta) {
+      currentPage = meta.page;
+      totalPages = meta.totalPages;
+
+      document.getElementById('paginationInfo').innerText = `Mostrando ${meta.total === 0 ? 0 : (meta.limit * (meta.page - 1) + 1)} a ${Math.min(meta.total, meta.limit * meta.page)} de ${meta.total} registros`;
+      document.getElementById('pageIndicator').innerText = `Página ${meta.page} de ${meta.totalPages}`;
+
+      document.getElementById('btnPrev').disabled = !meta.hasPreviousPage;
+      document.getElementById('btnNext').disabled = !meta.hasNextPage;
+    }
+
+    // Event Listeners
+    document.getElementById('btnFilter').addEventListener('click', () => fetchLogs(1));
+    document.getElementById('btnPrev').addEventListener('click', () => {
+      if (currentPage > 1) fetchLogs(currentPage - 1);
+    });
+    document.getElementById('btnNext').addEventListener('click', () => {
+      if (currentPage < totalPages) fetchLogs(currentPage + 1);
+    });
+
+    // Modal Json
+    const modal = document.getElementById('jsonModal');
+    document.getElementById('btnCloseModal').addEventListener('click', () => modal.classList.remove('active'));
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('active');
+    });
+
+    window.openModal = function(logObj) {
+      document.getElementById('jsonContent').innerText = JSON.stringify(logObj, null, 2);
+      modal.classList.add('active');
+    }
+
+    // Auto-fetch if token exists
+    if (tokenInput.value) {
+      fetchLogs(1);
+    }
+  </script>
+</body>
+</html>

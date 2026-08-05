@@ -188,4 +188,14 @@ server.get(
   },
   tagsAnalyticsController.tags.bind(tagsAnalyticsController)
 );
+
+server.get(
+  "/analytics/logs",
+  {
+    preHandler: [
+      authenticate
+    ]
+  },
+  analyticsController.logs
+);
 }

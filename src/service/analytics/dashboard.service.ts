@@ -757,4 +757,86 @@ static async getJobs(
   };
 
 }
+
+  static async getPaginatedLogs(
+    baseWhere: Prisma.UsageLogWhereInput,
+    options: {
+      page?: number;
+      limit?: number;
+      provider?: string;
+      model?: string;
+      success?: boolean;
+      project?: string;
+      agent?: string;
+      environment?: string;
+      search?: string;
+    }
+  ) {
+    const page = Math.max(1, Number(options.page) || 1);
+    const rawLimit = Number(options.limit) || 20;
+    const limit = Math.min(100, Math.max(1, rawLimit));
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.UsageLogWhereInput = {
+      ...baseWhere,
+    };
+
+    if (options.provider) {
+      where.provider = options.provider as any;
+    }
+    if (options.model) {
+      where.model = { contains: options.model, mode: "insensitive" };
+    }
+    if (typeof options.success === "boolean") {
+      where.success = options.success;
+    }
+    if (options.project) {
+      where.project = options.project;
+    }
+    if (options.agent) {
+      where.agent = options.agent;
+    }
+    if (options.environment) {
+      where.environment = options.environment;
+    }
+    if (options.search) {
+      const search = options.search.trim();
+      where.OR = [
+        { traceId: { contains: search, mode: "insensitive" } },
+        { requestId: { contains: search, mode: "insensitive" } },
+        { externalUserId: { contains: search, mode: "insensitive" } },
+        { agent: { contains: search, mode: "insensitive" } },
+        { project: { contains: search, mode: "insensitive" } },
+        { model: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    const [total, logs] = await Promise.all([
+      prisma.usageLog.count({ where }),
+      prisma.usageLog.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        include: {
+          billingGroup: { select: { id: true, name: true } },
+          apiKey: { select: { id: true, name: true } },
+        },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit) || 1;
+
+    return {
+      data: logs,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
+  }
 }

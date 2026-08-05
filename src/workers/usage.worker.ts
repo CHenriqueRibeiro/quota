@@ -49,6 +49,9 @@ const worker = new Worker(
 
     const promptTokens = Number(data.promptTokens ?? 0);
     const completionTokens = Number(data.completionTokens ?? 0);
+    const cachedTokens = Number(data.cachedTokens ?? 0);
+    const reasoningTokens = Number(data.reasoningTokens ?? 0);
+    const cacheCreationTokens = Number(data.cacheCreationTokens ?? 0);
     const totalTokens = Number(
       data.totalTokens ?? promptTokens + completionTokens
     );
@@ -60,7 +63,7 @@ const worker = new Worker(
         model,
         promptTokens,
         completionTokens,
-        cachedTokens: Number(data.cachedTokens ?? 0)
+        cachedTokens
       });
     }
 
@@ -253,6 +256,12 @@ const worker = new Worker(
         completionTokens,
 
         totalTokens,
+
+        cachedTokens,
+
+        reasoningTokens,
+
+        cacheCreationTokens,
 
 
         estimatedCost,

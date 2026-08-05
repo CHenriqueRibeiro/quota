@@ -258,6 +258,9 @@ model UsageLog {
   promptTokens     Int
   completionTokens Int
   totalTokens      Int
+  cachedTokens        Int @default(0)
+  reasoningTokens     Int @default(0)
+  cacheCreationTokens Int @default(0)
   estimatedCost    Float        @default(0)
 
   requestId  String?

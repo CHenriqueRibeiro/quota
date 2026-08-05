@@ -108,6 +108,18 @@ export class CollectorController {
           Number(body.totalTokens ?? 0),
 
 
+        cachedTokens:
+          Number(body.cachedTokens ?? body.prompt_tokens_details?.cached_tokens ?? body.cachedContentTokenCount ?? body.cache_read_input_tokens ?? 0),
+
+
+        reasoningTokens:
+          Number(body.reasoningTokens ?? body.completion_tokens_details?.reasoning_tokens ?? body.thoughtsTokenCount ?? 0),
+
+
+        cacheCreationTokens:
+          Number(body.cacheCreationTokens ?? body.cache_creation_input_tokens ?? 0),
+
+
         latencyMs:
           Number(body.latencyMs ?? 0),
 
