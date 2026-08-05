@@ -4,6 +4,11 @@ import nodemailer from "nodemailer";
 // Prefere IPv4 antes de IPv6
 dns.setDefaultResultOrder("ipv4first");
 
+console.log({
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT,
+  user: process.env.SMTP_USER,
+});
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT || 587),
