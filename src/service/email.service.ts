@@ -1,52 +1,20 @@
-import nodemailer from "nodemailer";
-import tls from "node:tls";
+import { Resend } from "resend";
 
-const isSecure = Number(process.env.SMTP_PORT || 465) === 465;
+// Instancia o cliente do Resend usando a chave das variáveis de ambiente
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Instância e configuração do Transporter
-export const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.gmail.com",
-  port: Number(process.env.SMTP_PORT || 465),
-  secure: isSecure,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-
-  // 🚀 Força conexão TCP sobre IPv4 no Bun/Railway
-  getSocket: (options, callback) => {
-    const socket = tls.connect(
-      {
-        host: options.host,
-        port: options.port,
-        family: 4,
-        servername: options.host,
-      },
-      () => {
-        callback(null, { connection: socket });
-      }
-    );
-
-    socket.on("error", (err) => {
-      callback(err, null);
-    });
-  },
-
-  connectionTimeout: 15000,
-  greetingTimeout: 15000,
-  socketTimeout: 15000,
-} as nodemailer.TransportOptions);
-
-// Interface para os parâmetros de envio
 export interface SendEmailOptions {
   to: string | string[];
   cc?: string | string[];
   subject: string;
   html: string;
-  attachments?: nodemailer.SendMailOptions["attachments"];
+  attachments?: Array<{
+    filename: string;
+    content: Buffer | string;
+  }>;
 }
 
-// 🚀 EXPORT DA FUNÇÃO sendEmail (Resolve o erro de sintaxe)
+// 🚀 Função exportada de envio
 export async function sendEmail({
   to,
   cc,
@@ -54,12 +22,29 @@ export async function sendEmail({
   html,
   attachments,
 }: SendEmailOptions) {
-  return transporter.sendMail({
-    from: process.env.SMTP_FROM || `"HubQuota" <${process.env.SMTP_USER}>`,
-    to,
-    cc,
+  const recipients = Array.isArray(to) ? to : [to];
+  const ccRecipients = cc ? (Array.isArray(cc) ? cc : [cc]) : undefined;
+
+  // Se ainda não configurou domínio próprio no Resend, use "onboarding@resend.dev"
+  const fromAddress = process.env.SMTP_FROM || "HubQuota <onboarding@resend.dev>";
+
+  const { data, error } = await resend.emails.send({
+    from: fromAddress,
+    to: recipients,
+    cc: ccRecipients,
     subject,
     html,
-    attachments,
+    attachments: attachments?.map((att) => ({
+      filename: att.filename,
+      content: typeof att.content === "string" ? Buffer.from(att.content) : att.content,
+    })),
   });
+
+  if (error) {
+    console.error("❌ Erro ao enviar e-mail via Resend:", error);
+    throw new Error(error.message);
+  }
+
+  console.log("✅ E-mail enviado com sucesso via Resend! ID:", data?.id);
+  return data;
 }
