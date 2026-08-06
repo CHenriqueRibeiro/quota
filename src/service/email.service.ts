@@ -26,7 +26,7 @@ export async function sendEmail({
   const ccRecipients = cc ? (Array.isArray(cc) ? cc : [cc]) : undefined;
 
   // Se ainda não configurou domínio próprio no Resend, use "onboarding@resend.dev"
-  const fromAddress = process.env.SMTP_FROM || "HubQuota <onboarding@resend.dev>";
+  const fromAddress = process.env.SMTP_FROM || "Quota <notificacoes@quota.app.br>";
 
   const { data, error } = await resend.emails.send({
     from: fromAddress,

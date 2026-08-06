@@ -112,8 +112,8 @@ export class ReportsService {
     lines.push(`"Periodo:","${startDate ? startDate.toLocaleDateString('pt-BR') : 'Inicio'} ate ${endDate ? endDate.toLocaleDateString('pt-BR') : 'Hoje'}"`);
     lines.push(`"Total de Requisicoes:","${totals._count.id || 0}"`);
     lines.push(`"Total de Tokens:","${totals._sum.totalTokens || 0}"`);
-    lines.push(`"Custo Total Estimado (USD):","${(totals._sum.estimatedCost || 0).toFixed(4)}"` );
-    lines.push(`"Latencia Media (ms):","${(totals._avg.latencyMs || 0).toFixed(0)}"` );
+    lines.push(`"Custo Total Estimado (USD):","${(totals._sum.estimatedCost || 0).toFixed(4)}"`);
+    lines.push(`"Latencia Media (ms):","${(totals._avg.latencyMs || 0).toFixed(0)}"`);
     lines.push("");
 
     // Divisão por Provedor
@@ -348,8 +348,8 @@ export class ReportsService {
         if (schedule.lastSentAt) {
           const lastSent = new Date(schedule.lastSentAt);
           const isSameDay = lastSent.getFullYear() === now.getFullYear() &&
-                            lastSent.getMonth() === now.getMonth() &&
-                            lastSent.getDate() === now.getDate();
+            lastSent.getMonth() === now.getMonth() &&
+            lastSent.getDate() === now.getDate();
 
           const lastSentHHmm = `${String(lastSent.getHours()).padStart(2, "0")}:${String(lastSent.getMinutes()).padStart(2, "0")}`;
 
@@ -405,28 +405,59 @@ export class ReportsService {
             });
           }
 
-          await sendEmail({
-            to: schedule.email,
-            cc: schedule.ccEmails,
-            subject: `[Quota Report] ${schedule.name} (${schedule.frequency})`,
-            html: `
-              <h2>Relatório Agendado: ${schedule.name}</h2>
-              <p>Segue em anexo o relatório automatizado gerado pelo Quota para a sua organização.</p>
-              <ul>
-                <li><strong>Frequência:</strong> ${schedule.frequency}</li>
-                <li><strong>Data de Geração:</strong> ${now.toLocaleString("pt-BR")}</li>
-              </ul>
-              <p>Os arquivos CSV detalhados estão em anexo.</p>
-            `,
-            attachments
+          // Registra a notificação no histórico (status inicial: PENDING)
+          const notification = await prisma.notification.create({
+            data: {
+              tenantId: schedule.tenantId,
+              reportScheduleId: schedule.id,
+              title: `Relatório Agendado: ${schedule.name}`,
+              message: `Disparo do relatório "${schedule.name}" (${schedule.frequency}) para o e-mail ${schedule.email}.`,
+              channel: "EMAIL",
+              status: "PENDING",
+            },
           });
 
-          await prisma.reportSchedule.update({
-            where: { id: schedule.id },
-            data: { lastSentAt: now }
-          });
+          try {
+            await sendEmail({
+              to: schedule.email,
+              cc: schedule.ccEmails,
+              subject: `[Agendamento] ${schedule.name} (${schedule.frequency})`,
+              html: `
+                <h2>Relatório Agendado: ${schedule.name}</h2>
+                <p>Segue em anexo o relatório automatizado gerado pelo Quota para a sua organização.</p>
+                <ul>
+                  <li><strong>Frequência:</strong> ${schedule.frequency}</li>
+                  <li><strong>Data de Geração:</strong> ${now.toLocaleString("pt-BR")}</li>
+                </ul>
+                <p>Os arquivos CSV detalhados estão em anexo.</p>
+              `,
+              attachments
+            });
 
-          console.log(`[Reports Service] ✅ E-mail do relatório "${schedule.name}" enviado com sucesso para ${schedule.email}!`);
+            await prisma.notification.update({
+              where: { id: notification.id },
+              data: {
+                status: "SENT",
+                sentAt: new Date(),
+              },
+            });
+
+            await prisma.reportSchedule.update({
+              where: { id: schedule.id },
+              data: { lastSentAt: now }
+            });
+
+            console.log(`[Reports Service] ✅ E-mail do relatório "${schedule.name}" enviado com sucesso para ${schedule.email}!`);
+          } catch (sendErr: any) {
+            await prisma.notification.update({
+              where: { id: notification.id },
+              data: {
+                status: "FAILED",
+                error: sendErr?.message || String(sendErr),
+              },
+            });
+            throw sendErr;
+          }
         }
       } catch (err) {
         console.error(`Erro ao processar agendamento de relatório ${schedule.id}:`, err);
