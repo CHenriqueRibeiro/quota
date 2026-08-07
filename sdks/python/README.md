@@ -95,35 +95,70 @@ model = genai.GenerativeModel("gemini-1.5-pro")
 response = model.generate_content("Escreva uma história curta.")
 ```
 
+### 5. Mistral AI SDK (`mistralai`)
+```python
+from quota import Quota
+from mistralai import Mistral
+
+Quota.init(api_key="qta_live_sua_chave")
+
+client = Mistral(api_key="SUA_CHAVE_MISTRAL")
+response = client.chat.complete(
+    model="mistral-large-latest",
+    messages=[{"role": "user", "content": "Olá Mistral!"}]
+)
+```
+
 > [!IMPORTANT]
 > **API Key do Quota é a ÚNICA configuração obrigatória!**
-> Todos os cabeçalhos `x-quota-*` e metadados (`project`, `agent`, `environment`, `externalUserId`) são **100% opcionais**. Se você passar apenas a `api_key`, o Quota rastreará todas as chamadas de IA automaticamente.
+> Se você passar apenas a `api_key`, o Quota registrará automaticamente todas as métricas essenciais de observabilidade: **Provedor, Modelo, Tokens de Prompt, Tokens de Resposta, Latência (ms), Custo e Status HTTP**.
+> 
+> Os parâmetros de categorização (Projeto, Agente, Ambiente, Usuário Final, Tags e Grupo de Faturamento) são **100% opcionais**.
 
 ---
 
-## 🏷️ Passando Metadados Customizados (Opcional)
+## 🏷️ Passando Metadados de Observabilidade (Opcional)
 
-Se você desejar categorizar e filtrar suas métricas por **Agente**, **Projeto**, **Usuário Final** ou **Tags**, você pode passar cabeçalhos `x-quota-*` nas requisições:
+Se você desejar categorizar e filtrar suas métricas no painel do Quota por **Agente**, **Projeto**, **Equipe/Grupo**, **Usuário Final** ou **Tags**, existem duas formas de enviar esses dados:
+
+### Opção A: Metadados Globais na Inicialização (Recomendado)
+Defina os parâmetros diretamente no `Quota.init()`. Todas as chamadas de IA da sua aplicação herdarão essas informações automaticamente:
+
+```python
+from quota import Quota
+
+Quota.init(
+    api_key="qta_live_sua_chave",
+    project="portal-cliente",     # Projeto / Setor
+    agent="bot-suporte",          # Agente / Assistente
+    environment="production"      # Ambiente (production, staging, etc)
+)
+```
+
+### Opção B: Metadados Dinâmicos por Requisição (via Cabeçalhos)
+Para informações dinâmicas que mudam a cada requisição (como o ID do usuário logado ou tags específicas), passe os cabeçalhos `x-quota-*` ou `extra_headers`:
 
 ```python
 response = client.chat.completions.create(
     model="gpt-4o",
     messages=[{"role": "user", "content": "Qual o meu saldo?"}],
     extra_headers={
-        "x-quota-agent": "bot-suporte-financeiro",
-        "x-quota-user-id": "usr_991823",
-        "x-quota-tags": "vip,suporte"
+        "x-quota-user-id": "usr_991823",        # ID do usuário final
+        "x-quota-tags": "vip,financeiro",        # Tags separadas por vírgula
+        "x-quota-billing-group": "equipe-vendas" # Grupo de faturamento/equipe
     }
 )
 ```
 
-### Cabeçalhos Suportados:
-- `x-quota-project`: Nome do projeto.
-- `x-quota-agent`: Nome do agente/assistente.
-- `x-quota-user-id`: ID do usuário final da sua aplicação.
-- `x-quota-tags`: Tags separadas por vírgula (`tag1,tag2`).
-- `x-quota-billing-group`: Grupo de faturamento.
-- `x-quota-environment`: Ambiente (`production`, `staging`, `development`).
+### 📋 Parâmetros e Cabeçalhos Suportados:
+| Parâmetro no `Quota.init()` | Cabeçalho HTTP | Descrição |
+| :--- | :--- | :--- |
+| `project` | `x-quota-project` | Nome do Projeto ou Setor da empresa. |
+| `agent` | `x-quota-agent` | Nome do Agente ou Robô de IA. |
+| `environment` | `x-quota-environment` | Ambiente (`production`, `staging`, `development`). |
+| `external_user_id` | `x-quota-user-id` | ID do usuário final da sua aplicação. |
+| `billing_group` | `x-quota-billing-group` | Grupo de faturamento, centro de custo ou equipe. |
+| `tags` | `x-quota-tags` | Lista ou string de tags separadas por vírgula (`tag1,tag2`). |
 
 ---
 
