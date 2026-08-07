@@ -20,10 +20,10 @@ Basta chamar `Quota.init()` no início da sua aplicação (ex: `main.py` ou `app
 from quota import Quota
 from openai import OpenAI
 
-# 1. Inicializa o monitoramento do Quota
+# 1. Inicializa o monitoramento do Quota (uma única vez na inicialização)
 Quota.init(api_key="qta_live_sua_chave_de_api")
 
-# 2. Use a biblioteca oficial da OpenAI normalmente!
+# 2. Use qualquer SDK oficial de IA normalmente!
 client = OpenAI()
 
 response = client.chat.completions.create(
@@ -36,9 +36,74 @@ print(response.choices[0].message.content)
 
 ---
 
-## 🏷️ Passando Metadados Customizados por Requisição
+## 🤖 Exemplos de Uso por Provedor em Python
 
-Você pode associar chamadas a **Agentes**, **Projetos**, **Usuários Finais** ou **Tags** passando cabeçalhos `x-quota-*` nas requisições HTTP ou no cliente da OpenAI:
+Como o `Quota.init()` intercepta automaticamente chamadas via `httpx` e `requests`, você pode usar os SDKs oficiais das IAs diretamente:
+
+### 1. OpenAI SDK (`openai`)
+```python
+from quota import Quota
+from openai import OpenAI
+
+Quota.init(api_key="qta_live_sua_chave")
+
+client = OpenAI()
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Resuma este artigo."}]
+)
+```
+
+### 2. Anthropic SDK (`anthropic`)
+```python
+from quota import Quota
+import anthropic
+
+Quota.init(api_key="qta_live_sua_chave")
+
+client = anthropic.Anthropic()
+message = client.messages.create(
+    model="claude-3-5-sonnet-20241022",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Explique astrofísica."}]
+)
+```
+
+### 3. Groq SDK (`groq`)
+```python
+from quota import Quota
+from groq import Groq
+
+Quota.init(api_key="qta_live_sua_chave")
+
+client = Groq()
+response = client.chat.completions.create(
+    model="llama-3.3-70b-versatile",
+    messages=[{"role": "user", "content": "Olá Groq!"}]
+)
+```
+
+### 4. Google Gemini (`google-generativeai`)
+```python
+from quota import Quota
+import google.generativeai as genai
+
+Quota.init(api_key="qta_live_sua_chave")
+
+genai.configure(api_key="SUA_CHAVE_GEMINI")
+model = genai.GenerativeModel("gemini-1.5-pro")
+response = model.generate_content("Escreva uma história curta.")
+```
+
+> [!IMPORTANT]
+> **API Key do Quota é a ÚNICA configuração obrigatória!**
+> Todos os cabeçalhos `x-quota-*` e metadados (`project`, `agent`, `environment`, `externalUserId`) são **100% opcionais**. Se você passar apenas a `api_key`, o Quota rastreará todas as chamadas de IA automaticamente.
+
+---
+
+## 🏷️ Passando Metadados Customizados (Opcional)
+
+Se você desejar categorizar e filtrar suas métricas por **Agente**, **Projeto**, **Usuário Final** ou **Tags**, você pode passar cabeçalhos `x-quota-*` nas requisições:
 
 ```python
 response = client.chat.completions.create(

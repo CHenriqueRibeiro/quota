@@ -1,6 +1,6 @@
 {
   "name": "quota-sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "SDK oficial para telemetria e interceptação de consumo de LLMs para o Quota",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

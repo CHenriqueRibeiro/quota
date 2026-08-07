@@ -24,12 +24,12 @@ Basta inicializar o `Quota.init()` na entrada da sua aplicação (ex: `index.ts`
 import { Quota } from 'quota-sdk';
 import OpenAI from 'openai';
 
-// 1. Inicializa o monitoramento do Quota
+// 1. Inicializa o monitoramento global do Quota (uma única vez na inicialização)
 Quota.init({
   apiKey: 'qta_live_sua_chave_de_api'
 });
 
-// 2. Use qualquer SDK de IA (OpenAI, Anthropic, etc.) normalmente!
+// 2. Suas chamadas para a OpenAI, Anthropic, Gemini ou Groq são capturadas automaticamente!
 const openai = new OpenAI();
 
 async function main() {
@@ -46,9 +46,74 @@ main();
 
 ---
 
-## 🏷️ Passando Metadados Customizados por Requisição
+## 🤖 Exemplos de Uso por Provedor
 
-Você pode associar chamadas a **Agentes**, **Projetos**, **Usuários Finais** ou **Tags** passando cabeçalhos `x-quota-*` nas requisições:
+Como o `Quota.init()` intercepta requisições HTTP de forma transparente, você pode usar os SDKs oficiais das IAs sem modificar seu código:
+
+### 1. OpenAI SDK (`openai`)
+```typescript
+import { Quota } from 'quota-sdk';
+import OpenAI from 'openai';
+
+Quota.init({ apiKey: 'qta_live_sua_chave' });
+
+const openai = new OpenAI();
+const res = await openai.chat.completions.create({
+  model: 'gpt-4o',
+  messages: [{ role: 'user', content: 'Resuma este texto.' }]
+});
+```
+
+### 2. Anthropic SDK (`@anthropic-ai/sdk`)
+```typescript
+import { Quota } from 'quota-sdk';
+import Anthropic from '@anthropic-ai/sdk';
+
+Quota.init({ apiKey: 'qta_live_sua_chave' });
+
+const anthropic = new Anthropic();
+const res = await anthropic.messages.create({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: 'Explique computação quântica.' }]
+});
+```
+
+### 3. Groq SDK (`groq-sdk`)
+```typescript
+import { Quota } from 'quota-sdk';
+import Groq from 'groq-sdk';
+
+Quota.init({ apiKey: 'qta_live_sua_chave' });
+
+const groq = new Groq();
+const res = await groq.chat.completions.create({
+  model: 'llama-3.3-70b-versatile',
+  messages: [{ role: 'user', content: 'Olá Groq!' }]
+});
+```
+
+### 4. Google Gemini (`@google/generative-ai`)
+```typescript
+import { Quota } from 'quota-sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+Quota.init({ apiKey: 'qta_live_sua_chave' });
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+const result = await model.generateContent('Escreva um poema sobre IA.');
+```
+
+> [!IMPORTANT]
+> **API Key do Quota é a ÚNICA configuração obrigatória!**
+> Todos os cabeçalhos `x-quota-*` e parâmetros como `project`, `agent`, `environment` ou `externalUserId` são **100% opcionais**. Se você passar apenas a `apiKey`, o Quota rastreará todas as chamadas de IA automaticamente.
+
+---
+
+## 🏷️ Passando Metadados Customizados (Opcional)
+
+Se você desejar categorizar e filtrar suas métricas no painel do Quota por **Agente**, **Projeto**, **Usuário Final** ou **Tags**, você pode passar cabeçalhos `x-quota-*` adicionais nas requisições HTTP:
 
 ```typescript
 const response = await openai.chat.completions.create(
