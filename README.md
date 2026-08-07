@@ -908,6 +908,72 @@ Registra métricas de uso de IA consumidas externamente sem realizar proxy.
 
 ---
 
+#### 💡 Guia de Observabilidade: Uso de Metadados e Regras de Negócio
+
+Para que o **Quota** forneça métricas ricas no Dashboard (como custo por setor, consumo por robô de atendimento, faturamento por cliente e rastreamento de fluxos), você pode utilizar os campos de metadados no `/collector` ou no `/proxy`.
+
+> [!NOTE]
+> **Autenticação Obrigatória**: Apenas o header `x-api-key` (no `/proxy` ou no `/collector`) e o corpo `provider`/`model` (no `/collector`) são **obrigatórios**. Todos os metadados abaixo são **100% opcionais**.
+
+##### 📋 Tabela de Parâmetros de Observabilidade:
+
+| Parâmetro (`metadata` ou JSON) | Header HTTP (`/proxy` ou SDK) | Descrição & Caso de Uso de Negócio |
+| :--- | :--- | :--- |
+| `project` | `x-project` / `x-quota-project` | **Nome do Projeto / Setor da Empresa**.<br>*Exemplo*: `"portal-financeiro"`, `"app-vendas"`. Permite isolar os custos por departamento ou produto. |
+| `agent` | `x-agent` / `x-quota-agent` | **Nome do Agente ou Robô de IA**.<br>*Exemplo*: `"bot-cobranca"`, `"assistente-juridico"`. Permite comparar qual robô gasta mais tokens ou tem maior latência. |
+| `environment` | `x-environment` / `x-quota-environment` | **Ambiente de Execução**.<br>*Exemplo*: `"production"`, `"staging"`, `"development"`. Evita misturar chamadas de teste com custos de produção. |
+| `externalUserId` | `x-user-id` / `x-quota-user-id` | **ID do Usuário Final da sua Aplicação**.<br>*Exemplo*: `"usr_991823"`. Permite descobrir quais clientes estão gerando mais custos de IA ou abusando do sistema. |
+| `billingGroup` | `x-billing-group` / `x-quota-billing-group` | **Grupo de Faturamento / Centro de Custo**.<br>*Exemplo*: `"equipe-sac"`, `"filial-sp"`. Usado para rateio financeiro interno e controle de orçamentos por equipe. |
+| `requestGroup` | `x-request-group` / `x-quota-request-group` | **Agrupador de Fluxo / Funcionalidade**.<br>*Exemplo*: `"geracao-relatorio-pdf"`, `"analise-contrato"`. Agrupa chamadas encadeadas de uma mesma tarefa. |
+| `tags` | `x-tags` / `x-quota-tags` | **Etiquetas Personalizadas**.<br>*Exemplo*: `["vip", "slow_tier"]`. Permite filtros livres e categorização ad-hoc. |
+| `traceId` | `x-trace-id` / `x-quota-trace-id` | **ID de Rastreamento / Tracing Distribuído**.<br>*Exemplo*: `"trace_881723-abc"`. Vincula logs do seu sistema com a telemetria do Quota. |
+
+---
+
+##### 🏢 Exemplos Práticos por Regra de Negócio:
+
+###### 1. Agente de Cobrança / SAC (Atendimento ao Cliente)
+```json
+// POST /collector
+{
+  "provider": "openai",
+  "model": "gpt-4o",
+  "promptTokens": 250,
+  "completionTokens": 90,
+  "latencyMs": 420,
+  "metadata": {
+    "project": "atendimento-cliente",
+    "agent": "bot-cobranca-whatsapp",
+    "environment": "production",
+    "externalUserId": "cliente_77491",
+    "requestGroup": "negociacao-divida",
+    "tags": ["whatsapp", "divida-ativa"]
+  }
+}
+```
+
+###### 2. Processamento em Lote / Geração de Relatórios (Centro de Custo)
+```json
+// POST /collector
+{
+  "provider": "anthropic",
+  "model": "claude-3-5-sonnet-20241022",
+  "promptTokens": 1400,
+  "completionTokens": 500,
+  "latencyMs": 1250,
+  "billingGroup": "departamento-juridico",
+  "metadata": {
+    "project": "auditoria-contratos",
+    "agent": "analisador-pdf",
+    "environment": "production",
+    "requestGroup": "contrato_batch_2026_08",
+    "tags": ["juridico", "pdf-parsing", "alto-consumo"]
+  }
+}
+```
+
+---
+
 ### 10. Alerts & Notifications (Sistema de Alertas)
 
 #### `POST /alerts`
