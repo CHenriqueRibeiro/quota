@@ -120,10 +120,8 @@ const response = await client.chat.complete({
 ```
 
 > [!IMPORTANT]
-> **Autenticação Flexível (`apiKey`):**
-> Você pode informar no parâmetro `apiKey` tanto a sua **Quota API Key** (`qta_live_...`) quanto a **Chave do Próprio Provedor LLM** (ex: `sk-...` da OpenAI, Anthropic, Gemini, etc.).
-> 
-> 📌 *Requisito:* Caso opte por usar a própria chave do provedor, ela **deve estar previamente cadastrada no painel da Quota** (em *Credenciais do Provedor*) para que as métricas e o consumo sejam contabilizados e vinculados corretamente à sua conta.
+> **API Key do Quota (`quota_live_...`) é a única chave aceita para autenticação!**
+> Certifique-se de passar uma Quota API Key válida criada no painel da plataforma. Caso seja informada uma chave inexistente ou não cadastrada no ambiente, os dados de consumo e telemetria não poderão ser gravados (`HTTP 401`).
 > 
 > Os parâmetros de categorização (Projeto, Agente, Ambiente, Usuário Final, Tags e Grupo de Faturamento) são **100% opcionais**.
 

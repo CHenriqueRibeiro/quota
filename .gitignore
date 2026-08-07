@@ -47,3 +47,13 @@ __pycache__/
 dist/
 build/
 
+# Tests
+temp-test.ts
+temp-test*
+src/tests/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+
+

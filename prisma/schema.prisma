@@ -200,7 +200,7 @@ model ApiKey {
 
   providerCredentialId String
 
-  providerCredential ProviderCredential @relation(fields: [providerCredentialId], references: [id])
+  providerCredential ProviderCredential @relation(fields: [providerCredentialId], references: [id], onDelete: Cascade)
 
   allowedModels Json?
 
