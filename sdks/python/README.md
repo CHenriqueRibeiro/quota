@@ -157,8 +157,10 @@ response = client.chat.completions.create(
 | `agent` | `x-quota-agent` | Nome do Agente ou Robô de IA. |
 | `environment` | `x-quota-environment` | Ambiente (`production`, `staging`, `development`). |
 | `external_user_id` | `x-quota-user-id` | ID do usuário final da sua aplicação. |
+| `request_group` | `x-quota-request-group` | Agrupamento de fluxo de execução. |
 | `billing_group` | `x-quota-billing-group` | Grupo de faturamento, centro de custo ou equipe. |
 | `tags` | `x-quota-tags` | Lista ou string de tags separadas por vírgula (`tag1,tag2`). |
+| `trace_id` | `x-quota-trace-id` | ID de rastreamento/tracing distribuído. |
 
 ---
 
