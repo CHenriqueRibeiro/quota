@@ -110,8 +110,10 @@ response = client.chat.complete(
 ```
 
 > [!IMPORTANT]
-> **API Key do Quota é a ÚNICA configuração obrigatória!**
-> Se você passar apenas a `api_key`, o Quota registrará automaticamente todas as métricas essenciais de observabilidade: **Provedor, Modelo, Tokens de Prompt, Tokens de Resposta, Latência (ms), Custo e Status HTTP**.
+> **Autenticação Flexível (`api_key`):**
+> Você pode informar no parâmetro `api_key` tanto a sua **Quota API Key** (`qta_live_...`) quanto a **Chave do Próprio Provedor LLM** (ex: `sk-...` da OpenAI, Anthropic, Gemini, etc.).
+> 
+> 📌 *Requisito:* Caso opte por usar a própria chave do provedor, ela **deve estar previamente cadastrada no painel da Quota** (em *Credenciais do Provedor*) para que as métricas e o consumo sejam contabilizados e vinculados corretamente à sua conta.
 > 
 > Os parâmetros de categorização (Projeto, Agente, Ambiente, Usuário Final, Tags e Grupo de Faturamento) são **100% opcionais**.
 

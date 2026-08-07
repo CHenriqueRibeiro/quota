@@ -164,6 +164,7 @@ model ProviderCredential {
   @@unique([tenantId, provider])
   @@index([tenantId])
   @@index([provider])
+  @@index([apiKey])
   @@map("provider_credentials")
 }
 

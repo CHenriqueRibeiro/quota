@@ -39,6 +39,34 @@ export const validateApiKey = async (
 
 
   if (!keyRecord) {
+    const credentialRecord = await prisma.providerCredential.findFirst({
+      where: {
+        apiKey: apiKey,
+        isActive: true
+      },
+      include: {
+        apiKeys: {
+          where: { isActive: true },
+          take: 1
+        }
+      }
+    });
+
+    if (credentialRecord) {
+      const firstApiKey = credentialRecord.apiKeys[0];
+      request.tenantId = credentialRecord.tenantId;
+      request.apiKey = {
+        id: firstApiKey?.id ?? credentialRecord.id,
+        key: firstApiKey?.key ?? credentialRecord.apiKey,
+        name: firstApiKey?.name ?? `Credential-${credentialRecord.provider}`,
+        tenantId: credentialRecord.tenantId,
+        provider: credentialRecord.provider as any,
+        providerCredentialId: credentialRecord.id,
+        allowedModels: (firstApiKey?.allowedModels as string[] | null) ?? null
+      };
+      return;
+    }
+
     return reply.status(401).send({
       error: 'Invalid API Key'
     });
