@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -106,7 +107,11 @@
       letter-spacing: 0.05em;
     }
 
-    select, input[type="text"], input[type="date"] {
+    select,
+    input[type="text"],
+    input[type="email"],
+    input[type="time"],
+    input[type="date"] {
       background-color: var(--bg-color);
       border: 1px solid var(--card-border);
       color: var(--text-main);
@@ -116,7 +121,8 @@
       outline: none;
     }
 
-    select:focus, input:focus {
+    select:focus,
+    input:focus {
       border-color: var(--primary);
     }
 
@@ -316,16 +322,116 @@
       padding: 3rem;
       color: var(--text-muted);
     }
+
+    /* Cards de Frequência e Botões de Dia da Semana */
+    .freq-cards-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .freq-card {
+      background: var(--bg-color);
+      border: 2px solid var(--card-border);
+      border-radius: 10px;
+      padding: 0.8rem 0.6rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+    }
+
+    .freq-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+    }
+
+    .freq-card.active {
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, 0.15);
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .freq-card-icon {
+      font-size: 1.4rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .freq-card-title {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--text-main);
+    }
+
+    .freq-card-sub {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    .weekday-pills-container {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .weekday-pill {
+      flex: 1;
+      min-width: 65px;
+      background: var(--bg-color);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 0.6rem 0.4rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .weekday-pill:hover {
+      border-color: var(--primary);
+      color: var(--text-main);
+    }
+
+    .weekday-pill.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+    }
+
+    .quick-pill {
+      background: var(--card-border);
+      color: var(--text-main);
+      border: none;
+      padding: 0.45rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .quick-pill:hover {
+      background: var(--primary);
+    }
   </style>
 </head>
+
 <body>
 
   <div class="container">
     <div class="header">
       <h1>Logs de Requisições - Analytics</h1>
-      <div class="token-config">
-        <label style="font-size: 0.75rem; color: var(--text-muted)">TOKEN AUTH:</label>
-        <input type="password" id="authToken" placeholder="Cole seu Bearer JWT token aqui..." />
+      <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <button class="btn btn-secondary" id="btnOpenScheduleModal"
+          style="display: flex; align-items: center; gap: 0.4rem;">
+          Agendamentos de Relatórios
+        </button>
+        <div class="token-config">
+          <label style="font-size: 0.75rem; color: var(--text-muted)">TOKEN AUTH:</label>
+          <input type="password" id="authToken" placeholder="Cole seu Bearer JWT token aqui..." />
+        </div>
       </div>
     </div>
 
@@ -389,7 +495,8 @@
         </thead>
         <tbody id="logsTableBody">
           <tr>
-            <td colspan="8" class="loading-spinner">Insira seu Token JWT acima e clique em "Filtrar" para carregar os logs.</td>
+            <td colspan="8" class="loading-spinner">Insira seu Token JWT acima e clique em "Filtrar" para carregar os
+              logs.</td>
           </tr>
         </tbody>
       </table>
@@ -419,9 +526,161 @@
     </div>
   </div>
 
+  <!-- Modal Agendamentos de Relatórios Recorrentes -->
+  <div class="modal-overlay" id="scheduleModal">
+    <div class="modal-card" style="max-width: 900px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.1rem;">⏰ Agendamentos de Relatórios Recorrentes</h3>
+        <button class="close-btn" id="btnCloseScheduleModal">&times;</button>
+      </div>
+      <div class="modal-body" style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+          <h4 style="font-size: 0.95rem; color: var(--text-muted);">Gerenciar Agendamentos</h4>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-secondary" id="btnRunScheduleNow"
+              style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">⚡ Executar Verificação Agora</button>
+            <button class="btn" id="btnNewSchedule" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">+ Novo
+              Agendamento</button>
+          </div>
+        </div>
+
+        <!-- Formulário de Criar/Editar Agendamento -->
+        <div id="scheduleFormCard"
+          style="display: none; background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 8px; padding: 1.2rem;">
+          <h5 id="scheduleFormTitle" style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--primary);">Novo
+            Agendamento</h5>
+          <form id="scheduleForm" onsubmit="event.preventDefault(); saveSchedule();">
+            <input type="hidden" id="schedId" />
+
+            <div
+              style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+              <div class="filter-group">
+                <label>Nome do Agendamento *</label>
+                <input type="text" id="schedName" required placeholder="Ex: Relatório Semanal Diretoria" />
+              </div>
+
+              <div class="filter-group">
+                <label>E-mail Principal *</label>
+                <input type="email" id="schedEmail" required placeholder="gestor@empresa.com" />
+              </div>
+
+              <div class="filter-group" style="grid-column: 1 / -1;">
+                <label style="margin-bottom: 0.5rem; display: block;">Frequência de Envio *</label>
+                <div class="freq-cards-container">
+                  <div class="freq-card active" data-freq="WEEKLY" onclick="selectFrequencyCard('WEEKLY')">
+                    <div class="freq-card-icon">📆</div>
+                    <div class="freq-card-title">Semanal</div>
+                    <div class="freq-card-sub">Dia específico da semana</div>
+                  </div>
+                  <div class="freq-card" data-freq="DAILY" onclick="selectFrequencyCard('DAILY')">
+                    <div class="freq-card-icon">📅</div>
+                    <div class="freq-card-title">Diário</div>
+                    <div class="freq-card-sub">Todos os dias no horário</div>
+                  </div>
+                  <div class="freq-card" data-freq="MONTHLY" onclick="selectFrequencyCard('MONTHLY')">
+                    <div class="freq-card-icon">🗓️</div>
+                    <div class="freq-card-title">Mensal</div>
+                    <div class="freq-card-sub">Dia específico do mês</div>
+                  </div>
+                </div>
+                <input type="hidden" id="schedFrequency" value="WEEKLY" />
+              </div>
+
+              <!-- Seleção do Dia da Semana (Frequência = WEEKLY) -->
+              <div class="filter-group" id="dayOfWeekGroup" style="grid-column: 1 / -1;">
+                <label style="margin-bottom: 0.5rem; display: block;">Dia da Semana *</label>
+                <div class="weekday-pills-container">
+                  <button type="button" class="weekday-pill active" data-day="1" onclick="selectWeekdayPill(1)">Segunda</button>
+                  <button type="button" class="weekday-pill" data-day="2" onclick="selectWeekdayPill(2)">Terça</button>
+                  <button type="button" class="weekday-pill" data-day="3" onclick="selectWeekdayPill(3)">Quarta</button>
+                  <button type="button" class="weekday-pill" data-day="4" onclick="selectWeekdayPill(4)">Quinta</button>
+                  <button type="button" class="weekday-pill" data-day="5" onclick="selectWeekdayPill(5)">Sexta</button>
+                  <button type="button" class="weekday-pill" data-day="6" onclick="selectWeekdayPill(6)">Sábado</button>
+                  <button type="button" class="weekday-pill" data-day="0" onclick="selectWeekdayPill(0)">Domingo</button>
+                </div>
+                <input type="hidden" id="schedDayOfWeek" value="1" />
+              </div>
+
+              <!-- Seleção do Dia do Mês (Frequência = MONTHLY) -->
+              <div class="filter-group" id="dayOfMonthGroup" style="grid-column: 1 / -1; display: none;">
+                <label style="margin-bottom: 0.5rem; display: block;">Dia do Mês *</label>
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+                  <select id="schedDayOfMonth" style="max-width: 180px;">
+                    <!-- Preenchido via JS de 1 a 31 -->
+                  </select>
+                  <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                    <button type="button" class="quick-pill" onclick="selectMonthDay(1)">1º dia</button>
+                    <button type="button" class="quick-pill" onclick="selectMonthDay(10)">Dia 10</button>
+                    <button type="button" class="quick-pill" onclick="selectMonthDay(15)">Dia 15</button>
+                    <button type="button" class="quick-pill" onclick="selectMonthDay(28)">Dia 28</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="filter-group">
+                <label>Horário de Envio (HH:mm) *</label>
+                <input type="time" id="schedTime" value="08:00" required />
+              </div>
+
+              <div class="filter-group">
+                <label>Tipo de Relatório</label>
+                <select id="schedReportType">
+                  <option value="BOTH">Ambos (Detalhado + Overview)</option>
+                  <option value="DETAILED_LOGS">Apenas Logs Detalhados</option>
+                  <option value="OVERVIEW_DASHBOARD">Apenas Dashboard Consolidado</option>
+                </select>
+              </div>
+
+              <div class="filter-group">
+                <label>Formato</label>
+                <select id="schedFormat">
+                  <option value="BOTH">Ambos (CSV + HTML)</option>
+                  <option value="CSV">Apenas CSV</option>
+                  <option value="HTML">Apenas HTML</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+              <button type="button" class="btn btn-secondary" onclick="cancelScheduleForm()">Cancelar</button>
+              <button type="submit" class="btn">Salvar Agendamento</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Tabela de Agendamentos Existentes -->
+        <div style="overflow-x: auto; max-height: 350px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--card-border); text-align: left;">
+                <th style="padding: 0.6rem;">Nome</th>
+                <th style="padding: 0.6rem;">Frequência / Dia</th>
+                <th style="padding: 0.6rem;">Horário</th>
+                <th style="padding: 0.6rem;">E-mail</th>
+                <th style="padding: 0.6rem;">Último Envio</th>
+                <th style="padding: 0.6rem; text-align: right;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="schedulesTableBody">
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">
+                  Carregando agendamentos...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <script>
     let currentPage = 1;
     let totalPages = 1;
+
+    const daysOfWeekMap = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
     // Carregar token salvo
     const tokenInput = document.getElementById('authToken');
@@ -429,6 +688,32 @@
     tokenInput.addEventListener('change', () => {
       localStorage.setItem('authToken', tokenInput.value.trim());
     });
+
+    // Inicialização do Select de Dias do Mês (1-31)
+    const schedDayOfMonthSelect = document.getElementById('schedDayOfMonth');
+    for (let i = 1; i <= 31; i++) {
+      const opt = document.createElement('option');
+      opt.value = i.toString();
+      opt.textContent = `Dia ${i}`;
+      schedDayOfMonthSelect.appendChild(opt);
+    }
+
+    function toggleFrequencyFields() {
+      const freq = document.getElementById('schedFrequency').value;
+      const dayOfWeekGroup = document.getElementById('dayOfWeekGroup');
+      const dayOfMonthGroup = document.getElementById('dayOfMonthGroup');
+
+      if (freq === 'WEEKLY') {
+        dayOfWeekGroup.style.display = 'flex';
+        dayOfMonthGroup.style.display = 'none';
+      } else if (freq === 'MONTHLY') {
+        dayOfWeekGroup.style.display = 'none';
+        dayOfMonthGroup.style.display = 'flex';
+      } else {
+        dayOfWeekGroup.style.display = 'none';
+        dayOfMonthGroup.style.display = 'none';
+      }
+    }
 
     async function fetchLogs(page = 1) {
       const token = tokenInput.value.trim();
@@ -533,7 +818,7 @@
       document.getElementById('btnNext').disabled = !meta.hasNextPage;
     }
 
-    // Event Listeners
+    // Event Listeners dos Logs
     document.getElementById('btnFilter').addEventListener('click', () => fetchLogs(1));
     document.getElementById('btnPrev').addEventListener('click', () => {
       if (currentPage > 1) fetchLogs(currentPage - 1);
@@ -549,15 +834,237 @@
       if (e.target === modal) modal.classList.remove('active');
     });
 
-    window.openModal = function(logObj) {
+    window.openModal = function (logObj) {
       document.getElementById('jsonContent').innerText = JSON.stringify(logObj, null, 2);
       modal.classList.add('active');
     }
 
-    // Auto-fetch if token exists
+    // Modal Agendamentos Logic
+    const scheduleModal = document.getElementById('scheduleModal');
+    document.getElementById('btnOpenScheduleModal').addEventListener('click', () => {
+      scheduleModal.classList.add('active');
+      fetchSchedules();
+    });
+    document.getElementById('btnCloseScheduleModal').addEventListener('click', () => {
+      scheduleModal.classList.remove('active');
+    });
+    scheduleModal.addEventListener('click', (e) => {
+      if (e.target === scheduleModal) scheduleModal.classList.remove('active');
+    });
+
+    document.getElementById('btnNewSchedule').addEventListener('click', () => {
+      openScheduleForm();
+    });
+
+    document.getElementById('btnRunScheduleNow').addEventListener('click', async () => {
+      const token = tokenInput.value.trim();
+      if (!token) return alert('Insira o Token JWT.');
+      try {
+        const res = await fetch('/reports/schedules/run', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert('Verificação de agendamentos executada!');
+          fetchSchedules();
+        } else {
+          alert('Erro: ' + (data.error || data.message));
+        }
+      } catch (err) {
+        alert('Erro ao executar: ' + err.message);
+      }
+    });
+
+    function selectFrequencyCard(freq) {
+      document.querySelectorAll('.freq-card').forEach(c => c.classList.remove('active'));
+      const card = document.querySelector(`.freq-card[data-freq="${freq}"]`);
+      if (card) card.classList.add('active');
+      document.getElementById('schedFrequency').value = freq;
+      toggleFrequencyFields();
+    }
+
+    function selectWeekdayPill(dayNum) {
+      document.querySelectorAll('.weekday-pill').forEach(p => p.classList.remove('active'));
+      const pill = document.querySelector(`.weekday-pill[data-day="${dayNum}"]`);
+      if (pill) pill.classList.add('active');
+      document.getElementById('schedDayOfWeek').value = dayNum;
+    }
+
+    function selectMonthDay(dayNum) {
+      document.getElementById('schedDayOfMonth').value = dayNum.toString();
+    }
+
+    function openScheduleForm(sched = null) {
+      document.getElementById('scheduleFormCard').style.display = 'block';
+      if (sched) {
+        document.getElementById('scheduleFormTitle').innerText = 'Editar Agendamento';
+        document.getElementById('schedId').value = sched.id;
+        document.getElementById('schedName').value = sched.name;
+        document.getElementById('schedEmail').value = sched.email;
+        document.getElementById('schedTime').value = sched.time || '08:00';
+        document.getElementById('schedReportType').value = sched.reportType || 'BOTH';
+        document.getElementById('schedFormat').value = sched.format || 'BOTH';
+
+        const freq = sched.frequency || 'WEEKLY';
+        selectFrequencyCard(freq);
+
+        if (freq === 'WEEKLY') {
+          const d = sched.dayOfWeek !== null && sched.dayOfWeek !== undefined ? Number(sched.dayOfWeek) : 1;
+          selectWeekdayPill(d);
+        } else if (freq === 'MONTHLY') {
+          const m = sched.dayOfMonth !== null && sched.dayOfMonth !== undefined ? Number(sched.dayOfMonth) : 1;
+          selectMonthDay(m);
+        }
+      } else {
+        document.getElementById('scheduleFormTitle').innerText = 'Novo Agendamento';
+        document.getElementById('scheduleForm').reset();
+        document.getElementById('schedId').value = '';
+        document.getElementById('schedTime').value = '08:00';
+        selectFrequencyCard('WEEKLY');
+        selectWeekdayPill(1);
+        selectMonthDay(1);
+      }
+    }
+
+    function cancelScheduleForm() {
+      document.getElementById('scheduleFormCard').style.display = 'none';
+      document.getElementById('scheduleForm').reset();
+      selectFrequencyCard('WEEKLY');
+      selectWeekdayPill(1);
+    }
+
+    async function fetchSchedules() {
+      const token = tokenInput.value.trim();
+      const tbody = document.getElementById('schedulesTableBody');
+      if (!token) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--danger-text); padding: 1.5rem;">Insira o Token JWT para ver os agendamentos.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Carregando agendamentos...</td></tr>`;
+
+      try {
+        const response = await fetch('/reports/schedules', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || errData.message || `HTTP ${response.status}`);
+        }
+        const schedules = await response.json();
+        renderSchedules(schedules);
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--danger-text); padding: 1.5rem;">Erro ao carregar: ${err.message}</td></tr>`;
+      }
+    }
+
+    function renderSchedules(schedules) {
+      const tbody = document.getElementById('schedulesTableBody');
+      if (!schedules || schedules.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhum agendamento cadastrado.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = schedules.map(s => {
+        let freqText = 'Diário';
+        if (s.frequency === 'WEEKLY') {
+          const dayName = daysOfWeekMap[s.dayOfWeek] || 'Segunda-feira';
+          freqText = `Semanal (${dayName})`;
+        } else if (s.frequency === 'MONTHLY') {
+          freqText = `Mensal (Dia ${s.dayOfMonth || 1})`;
+        }
+
+        const lastSent = s.lastSentAt ? new Date(s.lastSentAt).toLocaleString('pt-BR') : 'Nunca';
+
+        return `
+          <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.4);">
+            <td style="padding: 0.6rem; font-weight: 600;">${s.name}</td>
+            <td style="padding: 0.6rem;"><span class="badge badge-provider">${freqText}</span></td>
+            <td style="padding: 0.6rem;">${s.time || '08:00'}</td>
+            <td style="padding: 0.6rem;">${s.email}</td>
+            <td style="padding: 0.6rem; font-size: 0.75rem; color: var(--text-muted);">${lastSent}</td>
+            <td style="padding: 0.6rem; text-align: right; white-space: nowrap;">
+              <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; margin-right: 0.3rem;" onclick='openScheduleForm(${JSON.stringify(s)})'>Editar</button>
+              <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; background-color: var(--danger-bg); color: var(--danger-text);" onclick='deleteSchedule("${s.id}")'>Excluir</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function saveSchedule() {
+      const token = tokenInput.value.trim();
+      if (!token) return alert('Por favor, insira o Token JWT.');
+
+      const id = document.getElementById('schedId').value;
+      const name = document.getElementById('schedName').value.trim();
+      const email = document.getElementById('schedEmail').value.trim();
+      const frequency = document.getElementById('schedFrequency').value;
+      const time = document.getElementById('schedTime').value.trim() || '08:00';
+      const reportType = document.getElementById('schedReportType').value;
+      const format = document.getElementById('schedFormat').value;
+
+      const payload = { name, email, frequency, time, reportType, format };
+
+      if (frequency === 'WEEKLY') {
+        payload.dayOfWeek = Number(document.getElementById('schedDayOfWeek').value);
+      } else if (frequency === 'MONTHLY') {
+        payload.dayOfMonth = Number(document.getElementById('schedDayOfMonth').value);
+      }
+
+      const url = id ? `/reports/schedules/${id}` : '/reports/schedules';
+      const method = id ? 'PUT' : 'POST';
+
+      try {
+        const response = await fetch(url, {
+          method,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || errData.message || `HTTP ${response.status}`);
+        }
+
+        cancelScheduleForm();
+        fetchSchedules();
+      } catch (err) {
+        alert('Erro ao salvar agendamento: ' + err.message);
+      }
+    }
+
+    async function deleteSchedule(id) {
+      if (!confirm('Deseja realmente excluir este agendamento?')) return;
+      const token = tokenInput.value.trim();
+      if (!token) return alert('Por favor, insira o Token JWT.');
+
+      try {
+        const response = await fetch(`/reports/schedules/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || errData.message || `HTTP ${response.status}`);
+        }
+
+        fetchSchedules();
+      } catch (err) {
+        alert('Erro ao excluir agendamento: ' + err.message);
+      }
+    }
+
+    // Auto-fetch logs if token exists
     if (tokenInput.value) {
       fetchLogs(1);
     }
   </script>
 </body>
+
 </html>

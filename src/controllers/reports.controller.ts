@@ -151,14 +151,23 @@ export class ReportsController {
         ? ccEmails.split(/[,;]/).map((item) => item.trim()).filter(Boolean)
         : [];
 
+      let finalDayOfWeek: number | null = null;
+      let finalDayOfMonth: number | null = null;
+
+      if (frequency === "WEEKLY") {
+        finalDayOfWeek = dayOfWeek !== undefined && dayOfWeek !== null && dayOfWeek !== "" ? Number(dayOfWeek) : 1; // Padrão: Segunda-feira (1)
+      } else if (frequency === "MONTHLY") {
+        finalDayOfMonth = dayOfMonth !== undefined && dayOfMonth !== null && dayOfMonth !== "" ? Number(dayOfMonth) : 1; // Padrão: Dia 1
+      }
+
       const schedule = await prisma.reportSchedule.create({
         data: {
           tenantId,
           name: name.trim(),
           frequency: frequency as any,
           time: time || "08:00",
-          dayOfWeek: dayOfWeek !== undefined ? Number(dayOfWeek) : null,
-          dayOfMonth: dayOfMonth !== undefined ? Number(dayOfMonth) : null,
+          dayOfWeek: finalDayOfWeek,
+          dayOfMonth: finalDayOfMonth,
           email: email.trim(),
           ccEmails: parsedCcEmails,
           reportType: (reportType as any) || "BOTH",
@@ -191,10 +200,26 @@ export class ReportsController {
 
       const dataToUpdate: any = {};
       if (body.name) dataToUpdate.name = body.name.trim();
+
+      const newFrequency = body.frequency || existing.frequency;
       if (body.frequency) dataToUpdate.frequency = body.frequency;
       if (body.time) dataToUpdate.time = body.time;
-      if (body.dayOfWeek !== undefined) dataToUpdate.dayOfWeek = body.dayOfWeek !== null ? Number(body.dayOfWeek) : null;
-      if (body.dayOfMonth !== undefined) dataToUpdate.dayOfMonth = body.dayOfMonth !== null ? Number(body.dayOfMonth) : null;
+
+      if (newFrequency === "WEEKLY") {
+        if (body.dayOfWeek !== undefined) {
+          dataToUpdate.dayOfWeek = body.dayOfWeek !== null && body.dayOfWeek !== "" ? Number(body.dayOfWeek) : 1;
+        }
+        dataToUpdate.dayOfMonth = null;
+      } else if (newFrequency === "MONTHLY") {
+        if (body.dayOfMonth !== undefined) {
+          dataToUpdate.dayOfMonth = body.dayOfMonth !== null && body.dayOfMonth !== "" ? Number(body.dayOfMonth) : 1;
+        }
+        dataToUpdate.dayOfWeek = null;
+      } else if (newFrequency === "DAILY") {
+        dataToUpdate.dayOfWeek = null;
+        dataToUpdate.dayOfMonth = null;
+      }
+
       if (body.email) dataToUpdate.email = body.email.trim();
       if (body.ccEmails !== undefined) {
         dataToUpdate.ccEmails = Array.isArray(body.ccEmails)
