@@ -1,9 +1,7 @@
 import type { FastifyReply } from "fastify";
 import type { AuthenticatedRequest } from "../types/auth";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import { usageQueue } from "../lib/queue";
-
-const prisma = new PrismaClient();
 
 export class FailedUsageController {
 

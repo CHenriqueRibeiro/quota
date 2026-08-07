@@ -1,10 +1,7 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import { prisma } from "../../lib/prisma";
 import type { AuthenticatedUser } from "../../types/auth";
 import scopeService from "../scope.service";
-
-
-const prisma = new PrismaClient();
-
 
 
 class HomeService {
@@ -46,67 +43,32 @@ class HomeService {
 
 
 
-  const health =
-    await this.getHealth(
-      where
-    );
+  const [
+    health,
+    maturity,
+    trends,
+    ranking,
+    budgetSummary,
+    budgetOverview,
+    topCosts,
+    providerDistribution
+  ] = await Promise.all([
+    this.getHealth(where),
+    this.getMaturity(where, user),
+    this.getTrends(where),
+    this.getRanking(where),
+    this.getBudgetSummary(where, user),
+    this.getBudgetOverview(where, user),
+    this.getTopCosts(where),
+    this.getProviderDistribution(where),
+  ]);
 
-
-
-
-  const maturity =
-    await this.getMaturity(
-      where,
-      user
-    );
-
-
-
-
-  const trends =
-    await this.getTrends(
-      where
-    );
-
-
-
-
-  const ranking =
-    await this.getRanking(
-      where
-    );
-
-
-
-
-  const budgetSummary =
-  await this.getBudgetSummary(
-    where,
-    user
-  );
-
-const budgetOverview =
-  await this.getBudgetOverview(
-    where,
-    user
-  );
-
-  const topCosts =
-  await this.getTopCosts(
-    where
-  );
-
-  const insights =
-  await this.getInsights(
+  const insights = await this.getInsights(
     where,
     trends,
     topCosts
   );
 
-  const providerDistribution =
-  await this.getProviderDistribution(
-    where
-  );
 return {
 
   health,

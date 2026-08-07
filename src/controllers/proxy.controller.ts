@@ -1,12 +1,10 @@
 import type { FastifyReply } from 'fastify';
 import type { AuthenticatedRequest } from '../types/auth';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import crypto from 'crypto';
 import { addUsageJob } from '../lib/queue';
 import { normalizeProvider, SUPPORTED_PROVIDERS, type SupportedProvider } from '../lib/providers';
 import { callProvider } from '../lib/provider-client';
-
-const prisma = new PrismaClient();
 
 export class ProxyController {
   async execute(request: AuthenticatedRequest, reply: FastifyReply) {

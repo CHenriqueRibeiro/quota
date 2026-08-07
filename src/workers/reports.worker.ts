@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import reportsService from "../service/reports.service";
-
-const prisma = new PrismaClient();
 
 let isProcessing = false;
 

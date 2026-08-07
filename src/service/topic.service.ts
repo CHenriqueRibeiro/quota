@@ -1,12 +1,10 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import type { AuthenticatedUser } from "../types/auth";
 import scopeService from "./scope.service";
 import DashboardService from "./analytics/dashboard.service";
 import { callProvider } from "../lib/provider-client";
 import { isSupportedProvider } from "../lib/providers";
-
-
-const prisma = new PrismaClient();
 
 type DefaultTopic = {
   key:string;

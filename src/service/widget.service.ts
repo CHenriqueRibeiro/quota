@@ -1,8 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import crypto from "crypto";
 import cloudinary from "../service/cloudinary.service";
-
-const prisma = new PrismaClient();
 
 
 interface InitWidgetParams {

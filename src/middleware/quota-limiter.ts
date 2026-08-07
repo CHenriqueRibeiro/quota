@@ -11,13 +11,10 @@ export const quotaLimiter = (limit: number) => {
     }
 
     const key = `quota:limit:${tenantId}`;
-    const [_, currentUsage] = await redis
-      .multi()
-      .incr(key)
-      .expire(key, 60)
-      .exec() as [any, [any, number]];
-
-    const count = Number(currentUsage[1]);
+    const count = await redis.incr(key);
+    if (count === 1) {
+      await redis.expire(key, 60);
+    }
 
     if (count > limit) {
       return reply.status(429).send({ 

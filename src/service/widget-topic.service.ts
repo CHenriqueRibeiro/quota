@@ -1,9 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import widgetSessionService from "./widget-session.service";
 import topicService from "./topic.service";
-
-
-const prisma = new PrismaClient();
 
 
 

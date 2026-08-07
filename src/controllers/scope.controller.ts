@@ -1,11 +1,9 @@
 import type { FastifyReply } from "fastify";
-import { PrismaClient, ScopeMode, ProviderName,Prisma  } from "@prisma/client";
+import { ScopeMode, ProviderName, Prisma } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 
 import type { AuthenticatedRequest } from "../types/auth";
 import ScopeService from "../service/scope.service";
-
-
-const prisma = new PrismaClient();
 
 
 

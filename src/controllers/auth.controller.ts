@@ -1,10 +1,8 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import jwt from 'jsonwebtoken';
 import * as argon2 from 'argon2';
 import type { AuthenticatedRequest } from '../types/auth';
-
-const prisma = new PrismaClient();
 
 const getBackendUrl = (request: FastifyRequest) => {
   const host = request.headers.host || `localhost:${process.env.PORT || 3000}`;

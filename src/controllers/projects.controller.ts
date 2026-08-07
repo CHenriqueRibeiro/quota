@@ -1,9 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import type { AuthenticatedRequest } from "../types/auth";
 import ScopeService from "../service/scope.service";
-
-const prisma = new PrismaClient();
 
 type ProjectQuery = {
   startDate?: string;

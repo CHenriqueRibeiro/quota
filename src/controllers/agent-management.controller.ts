@@ -1,8 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import type { AuthenticatedRequest } from "../types/auth";
-
-const prisma = new PrismaClient();
 
 export class AgentManagementController {
   async list(request: FastifyRequest, reply: FastifyReply) {

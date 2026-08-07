@@ -1,7 +1,6 @@
-import { PrismaClient, ProviderName, AssistantType } from "@prisma/client";
+import { ProviderName, AssistantType } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import type { AuthenticatedUser } from "../types/auth";
-
-const prisma = new PrismaClient();
 
 interface CreateAssistantBody {
 

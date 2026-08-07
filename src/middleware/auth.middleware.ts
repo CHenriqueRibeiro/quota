@@ -1,9 +1,7 @@
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { UserRole } from '../types/auth';
-
-const prisma = new PrismaClient();
 
 
 const roleHierarchy: Record<UserRole, number> = {

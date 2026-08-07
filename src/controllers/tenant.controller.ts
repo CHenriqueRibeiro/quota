@@ -1,10 +1,9 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { PrismaClient, Plan } from '@prisma/client';
+import { Plan } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import crypto from 'crypto';
 import { SUPPORTED_PROVIDERS, type SupportedProvider } from '../lib/providers';
 import type { AuthenticatedRequest } from '../types/auth';
-
-const prisma = new PrismaClient();
 
 export class TenantController {
   

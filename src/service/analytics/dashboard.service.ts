@@ -1,7 +1,6 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import { prisma } from "../../lib/prisma";
 import { usageQueue } from "../../lib/queue";
-
-const prisma = new PrismaClient();
 
 export default class DashboardService {
 

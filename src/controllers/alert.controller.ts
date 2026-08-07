@@ -1,11 +1,8 @@
 import type { FastifyReply } from "fastify";
 import type { AuthenticatedRequest } from "../types/auth";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import { processAlerts } from "../service/alert-engine.service";
 import { triggerAlert } from "../service/alert.service";
-
-
-const prisma = new PrismaClient();
 
 
 class AlertController {

@@ -1,25 +1,10 @@
 import { Worker } from "bullmq";
-import { PrismaClient, ProviderName } from "@prisma/client";
-import Redis from "ioredis";
+import { ProviderName } from "@prisma/client";
+import { prisma } from "../lib/prisma";
+import { redis } from "../lib/redis";
+import { connectionOptions } from "../lib/queue";
 import { processAlerts } from "../service/alert-engine.service";
 import llmPricingService from "../service/llm-pricing.service";
-
-const prisma = new PrismaClient();
-
-const redisUrl = process.env.REDIS_URL || "redis://127.0.0.1:6379";
-const parsed = new URL(redisUrl);
-
-const redis = new Redis({
-  host: parsed.hostname,
-  port: Number(parsed.port || 6379),
-  password: parsed.password || undefined,
-});
-
-const connectionOptions = {
-  host: parsed.hostname,
-  port: Number(parsed.port || 6379),
-  password: parsed.password || undefined,
-};
 
 const worker = new Worker(
   "usage",
@@ -74,13 +59,11 @@ const worker = new Worker(
 
     const lockKey = `usage:processed:${requestId}`;
 
-    const alreadyProcessed = await redis.setnx(lockKey, "1");
+    const acquired = await redis.set(lockKey, "1", "EX", 86400, "NX");
 
-    if (alreadyProcessed === 0) {
+    if (!acquired) {
       return;
     }
-
-    await redis.expire(lockKey, 86400);
 
     let billingGroupId: string | null = null;
 

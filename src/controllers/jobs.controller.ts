@@ -1,10 +1,8 @@
 import type { FastifyReply } from "fastify";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import type { AuthenticatedRequest } from "../types/auth";
 import { usageQueue } from "../lib/queue";
 import ScopeService from "../service/scope.service";
-
-const prisma = new PrismaClient();
 
 type JobsQuery = {
   startDate?: string;

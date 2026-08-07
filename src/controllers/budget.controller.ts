@@ -1,8 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { PrismaClient, AlertPeriod, Prisma } from "@prisma/client";
+import { AlertPeriod, Prisma } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 import type { AuthenticatedRequest } from "../types/auth";
-
-const prisma = new PrismaClient();
 
 function getPeriodDate(period: AlertPeriod): Date {
   const now = new Date();

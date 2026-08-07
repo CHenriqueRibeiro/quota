@@ -2,9 +2,7 @@ import type { FastifyReply } from 'fastify';
 import type { AuthenticatedRequest } from '../types/auth';
 import { usageQueue } from '../lib/queue';
 import { randomUUID } from 'node:crypto';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 export class CollectorController {
   async execute(

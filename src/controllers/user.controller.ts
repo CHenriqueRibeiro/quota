@@ -1,5 +1,5 @@
 import type { FastifyReply } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import * as argon2 from 'argon2';
 
 import type {
@@ -8,8 +8,6 @@ import type {
 } from '../types/auth';
 
 
-
-const prisma = new PrismaClient();
 
 const DEFAULT_PASSWORD = '123456';
 

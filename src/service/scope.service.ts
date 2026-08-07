@@ -1,14 +1,11 @@
 import {
-  PrismaClient,
   ProviderName,
   ScopeMode,
   Prisma
 } from "@prisma/client";
+import { prisma } from "../lib/prisma";
 
 import type { AuthenticatedUser } from "../types/auth";
-
-
-const prisma = new PrismaClient();
 
 
 

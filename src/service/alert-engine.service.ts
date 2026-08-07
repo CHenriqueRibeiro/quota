@@ -378,54 +378,26 @@ export async function processAlerts(
 
 
 
-  for(const alert of alerts){
-
-
-    switch(alert.type){
-
-
-      case "COST":
-
-        await checkCostAlert(alert);
-
-        break;
-
-
-
-      case "TOKENS":
-
-        await checkTokenAlert(alert);
-
-        break;
-
-
-
-      case "ERRORS":
-
-        await checkErrorAlert(alert);
-
-        break;
-
-
-
-      case "LATENCY":
-
-        await checkLatencyAlert(alert);
-
-        break;
-
-
-
-      case "BUDGET":
-
-        await checkBudgetAlert(alert);
-
-        break;
-
-    }
-
-  }
-
-  await checkBudgets(tenantId);
-
+  await Promise.all([
+    ...alerts.map(async (alert) => {
+      switch (alert.type) {
+        case "COST":
+          await checkCostAlert(alert);
+          break;
+        case "TOKENS":
+          await checkTokenAlert(alert);
+          break;
+        case "ERRORS":
+          await checkErrorAlert(alert);
+          break;
+        case "LATENCY":
+          await checkLatencyAlert(alert);
+          break;
+        case "BUDGET":
+          await checkBudgetAlert(alert);
+          break;
+      }
+    }),
+    checkBudgets(tenantId)
+  ]);
 }

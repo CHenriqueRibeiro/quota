@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import cors from '@fastify/cors';
-import Fastify from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import Fastify, { type FastifyError } from 'fastify';
+import { prisma } from "./src/lib/prisma";
 import fastifyStatic from '@fastify/static';
 import path from 'path';
 import multipart from "@fastify/multipart";
@@ -32,13 +32,24 @@ import { reportsRoutes } from "./src/routes/reports.routes";
 import llmPricingService from "./src/service/llm-pricing.service";
 import reportsService from "./src/service/reports.service";
 
-
-
-const prisma = new PrismaClient();
+const isProduction = process.env.NODE_ENV === 'production';
 
 const server = Fastify({
-  logger: true,
+  logger: isProduction ? { level: 'info' } : true,
   bodyLimit: 20 * 1024 * 1024,
+  keepAliveTimeout: 65000,
+  requestTimeout: 30000,
+  trustProxy: true,
+});
+
+server.setErrorHandler((error, request, reply) => {
+  request.log.error(error);
+  if (reply.sent) return;
+  const err = error as FastifyError;
+  const statusCode = err.statusCode ?? 500;
+  reply.status(statusCode).send({
+    error: statusCode >= 500 ? 'Internal Server Error' : err.message,
+  });
 });
 
 
