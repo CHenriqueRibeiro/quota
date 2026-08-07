@@ -214,6 +214,10 @@ Para enviar eventos de uso customizados:
 ```python
 from quota import Quota
 
+# 1. Inicializa com a sua Quota API Key
+Quota.init(api_key="quota_live_sua_chave")
+
+# 2. Envia o evento de telemetria manual
 Quota.track_usage({
     "provider": "openai",
     "model": "gpt-4o",

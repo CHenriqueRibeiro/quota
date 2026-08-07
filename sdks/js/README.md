@@ -203,6 +203,10 @@ Para enviar telemetria de eventos customizados ou chamadas de IA fora do escopo 
 ```typescript
 import { Quota } from 'quota-sdk';
 
+// 1. Inicializa com a sua Quota API Key
+Quota.init({ apiKey: 'quota_live_sua_chave' });
+
+// 2. Envia o evento de telemetria manual
 await Quota.trackUsage({
   provider: 'openai',
   model: 'gpt-4o',
