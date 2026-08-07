@@ -4,7 +4,7 @@ import { Quota } from '../src/index';
  * Exemplo prático do SDK Quota em TypeScript / JavaScript
  */
 async function runExample() {
-  console.log('=== Teste do SDK Quota (@quota/sdk) ===\n');
+  console.log('=== Teste do SDK Quota (quota-sdk) ===\n');
 
   // 1. Inicializa o SDK com as configurações globais
   Quota.init({

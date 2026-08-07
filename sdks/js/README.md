@@ -1,4 +1,4 @@
-# @quota/sdk
+# quota-sdk
 
 SDK oficial em JavaScript / TypeScript para telemetria, monitoramento de latência e consumo de tokens de modelos de IA (OpenAI, Anthropic, Gemini, Groq, etc.) para a plataforma **Quota**.
 
@@ -7,11 +7,11 @@ SDK oficial em JavaScript / TypeScript para telemetria, monitoramento de latênc
 ## 📦 Instalação
 
 ```bash
-npm install @quota/sdk
+npm install quota-sdk
 # ou
-bun add @quota/sdk
+bun add quota-sdk
 # ou
-yarn add @quota/sdk
+yarn add quota-sdk
 ```
 
 ---
@@ -21,7 +21,7 @@ yarn add @quota/sdk
 Basta inicializar o `Quota.init()` na entrada da sua aplicação (ex: `index.ts` ou `server.ts`).
 
 ```typescript
-import { Quota } from '@quota/sdk';
+import { Quota } from 'quota-sdk';
 import OpenAI from 'openai';
 
 // 1. Inicializa o monitoramento do Quota
@@ -99,7 +99,7 @@ QUOTA_ENDPOINT=http://localhost:3000/collector
 Para enviar telemetria de eventos customizados ou chamadas de IA fora do escopo HTTP:
 
 ```typescript
-import { Quota } from '@quota/sdk';
+import { Quota } from 'quota-sdk';
 
 await Quota.trackUsage({
   provider: 'openai',
