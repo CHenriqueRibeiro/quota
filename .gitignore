@@ -34,3 +34,16 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .DS_Store
 
 /generated/prisma
+
+# Python
+.venv
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+

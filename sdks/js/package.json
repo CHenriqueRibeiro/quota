@@ -1,0 +1,28 @@
+{
+  "name": "@quota/sdk",
+  "version": "1.0.0",
+  "description": "SDK oficial para telemetria e interceptação de consumo de LLMs para o Quota",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test:example": "bun run examples/test-collector.ts"
+  },
+  "keywords": [
+    "quota",
+    "telemetry",
+    "llm",
+    "openai",
+    "anthropic",
+    "gemini",
+    "ai",
+    "tokens"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
