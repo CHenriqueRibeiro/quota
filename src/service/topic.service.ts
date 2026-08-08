@@ -833,75 +833,64 @@ class TopicService {
     id:string,
     data:ExecuteTopicBody = {}
   ){
+    let topic: any = null;
 
-    const topic =
-      await prisma.topic.findFirst({
-
+    try {
+      topic = await prisma.topic.findFirst({
         where:{
-
           id,
-
           tenantId:user.tenantId,
-
           enabled:true
-
         },
-
         include:{
-
           assistant:{
-
             include:{
-
               apiKey:{
-
                 include:{
-
                   providerCredential:true
-
                 }
-
               }
-
             }
-
           }
-
         }
-
       });
-
-
-
-    if(!topic){
-
-      throw new Error(
-        "T\u00f3pico n\u00e3o encontrado."
-      );
-
+    } catch {
+      // ignore
     }
 
+    if(!topic){
+      const def = defaultTopics.find(t => t.key === id || t.name === id || `topic-${t.key}` === id);
+      if (def) {
+        topic = {
+          id: def.key,
+          tenantId: user.tenantId,
+          name: def.name,
+          description: def.description,
+          category: def.category,
+          questions: def.questions,
+          enabled: true,
+          assistant: null
+        };
+      }
+    }
 
+    if(!topic){
+      throw new Error(
+        "Tópico não encontrado."
+      );
+    }
 
     if(topic.assistant && !topic.assistant.enabled){
-
       throw new Error(
         "Assistant desativado."
       );
-
     }
-
-
 
     if(topic.assistant?.apiKey && !topic.assistant.apiKey.isActive){
-
       throw new Error(
-        "API Key do Assistant est\u00e1 inativa."
+        "API Key do Assistant está inativa."
       );
-
     }
-
-
 
     const period =
       this.buildPeriod(data);
@@ -922,67 +911,62 @@ class TopicService {
         period.endDate
       );
 
-    const answer =
+    let answer =
       topic.assistant
         ? await this.callAssistant(
             topic.assistant,
             topic.name,
             this.normalizeQuestions(topic.questions),
             context
-          )
+          ).catch(() => null)
         : null;
 
+    if (!answer) {
+      const summary = (context as any)?.summary || {};
+      const totalReqs = summary.totalRequests || summary.requests || 0;
+      const totalCost = Number(summary.totalCost || summary.cost || 0).toFixed(4);
+      const totalTokens = summary.totalTokens || summary.tokens || 0;
+      const avgLatency = Math.round(summary.averageLatencyMs || summary.latencyMs || 0);
 
+      const qList = (this.normalizeQuestions(topic.questions) || []).map((q: string) => `• ${q}`).join("\n");
+
+      answer = {
+        content: `📊 **Análise do Tópico: ${topic.name}**\n\n` +
+          `**Perguntas de Referência:**\n${qList || '• Análise geral de consumo'}\n\n` +
+          `**Métricas Processadas:**\n` +
+          `• **Total de Requisições:** ${totalReqs}\n` +
+          `• **Custo Total Estimado:** R$ ${totalCost}\n` +
+          `• **Volume de Tokens:** ${totalTokens}\n` +
+          `• **Latência Média:** ${avgLatency}ms\n\n` +
+          `💡 *Dica: Associe um Assistente ao tópico nas configurações para análises interpretadas via IA.*`
+      };
+    }
 
     return {
-
       topic:{
-
         id:topic.id,
-
         name:topic.name,
-
         description:topic.description,
-
         category:topic.category,
-
         questions:
           this.normalizeQuestions(topic.questions)
-
       },
-
       assistant:topic.assistant ? {
-
         id:topic.assistant.id,
-
         name:topic.assistant.name,
-
         type:topic.assistant.type,
-
         provider:topic.assistant.provider,
-
         model:topic.assistant.model,
-
         apiKey:topic.assistant.apiKey ? {
-
           id:topic.assistant.apiKey.id,
-
           name:topic.assistant.apiKey.name,
-
           provider:topic.assistant.apiKey.provider
-
         } : null
-
       } : null,
-
       period,
-
       context,
-
       answer
-
     };
-
   }
 
   private buildPeriod(
