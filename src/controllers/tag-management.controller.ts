@@ -3,7 +3,32 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import type { AuthenticatedRequest } from "../types/auth";
 
+interface TagItem {
+  id: string;
+  tenantId: string;
+  name: string;
+  createdAt: string;
+}
+
+// Armazenamento em memória para tags criadas, editadas e excluídas por tenant
+const customTagsStore = new Map<string, Map<string, TagItem>>();
+const deletedTagsStore = new Map<string, Set<string>>();
+
 export class TagManagementController {
+  private getTenantTagsMap(tenantId: string): Map<string, TagItem> {
+    if (!customTagsStore.has(tenantId)) {
+      customTagsStore.set(tenantId, new Map());
+    }
+    return customTagsStore.get(tenantId)!;
+  }
+
+  private getDeletedTagsSet(tenantId: string): Set<string> {
+    if (!deletedTagsStore.has(tenantId)) {
+      deletedTagsStore.set(tenantId, new Set());
+    }
+    return deletedTagsStore.get(tenantId)!;
+  }
+
   async list(request: FastifyRequest, reply: FastifyReply) {
     try {
       const actor = (request as AuthenticatedRequest).user;
@@ -23,39 +48,59 @@ export class TagManagementController {
         return reply.status(403).send({ error: "Sem permissão para este tenant" });
       }
 
+      const tenantTagsMap = this.getTenantTagsMap(tenantId);
+      const deletedSet = this.getDeletedTagsSet(tenantId);
+
+      // Tenta tabela do banco caso exista
       try {
-        const tags = await (prisma as any).tag.findMany({
+        const dbTags = await (prisma as any).tag.findMany({
           where: { tenantId },
           orderBy: { name: "asc" }
         });
-        return reply.status(200).send(tags);
-      } catch {
-        // Fallback: extrair tags dos logs de consumo
-        const logs = await prisma.usageLog.findMany({
-          where: { tenantId, tags: { not: Prisma.DbNull } },
-          select: { tags: true },
-          take: 200,
-        });
-
-        const set = new Set<string>();
-        for (const log of logs) {
-          if (Array.isArray(log.tags)) {
-            log.tags.forEach((t: any) => typeof t === "string" && set.add(t));
-          } else if (typeof log.tags === "string") {
-            set.add(log.tags);
-          }
+        if (Array.isArray(dbTags) && dbTags.length > 0) {
+          return reply.status(200).send(dbTags);
         }
-
-        const tagList = Array.from(set).map((t, i) => ({
-          id: `tag-${i}`,
-          tenantId,
-          name: t,
-          description: "Tag de telemetria enviada nas requisições",
-          createdAt: new Date().toISOString()
-        }));
-
-        return reply.status(200).send(tagList);
+      } catch {
+        // ignore caso o modelo não exista na tabela do prisma
       }
+
+      // Extrai tags dos logs de consumo
+      const logs = await prisma.usageLog.findMany({
+        where: { tenantId, tags: { not: Prisma.DbNull } },
+        select: { tags: true },
+        take: 200,
+      });
+
+      const set = new Set<string>();
+      for (const log of logs) {
+        if (Array.isArray(log.tags)) {
+          log.tags.forEach((t: any) => typeof t === "string" && set.add(t));
+        } else if (typeof log.tags === "string") {
+          set.add(log.tags);
+        }
+      }
+
+      // Adiciona tags criadas customizadas
+      for (const customTag of tenantTagsMap.values()) {
+        set.add(customTag.name);
+      }
+
+      // Filtra as tags que foram marcadas como excluídas
+      const resultList: TagItem[] = [];
+      for (const tagName of set) {
+        if (deletedSet.has(tagName.toLowerCase()) || deletedSet.has(tagName)) {
+          continue;
+        }
+        const custom = tenantTagsMap.get(tagName);
+        resultList.push({
+          id: tagName,
+          tenantId,
+          name: tagName,
+          createdAt: custom?.createdAt || new Date().toISOString()
+        });
+      }
+
+      return reply.status(200).send(resultList);
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ error: "Erro ao listar tags" });
@@ -70,7 +115,7 @@ export class TagManagementController {
       }
 
       const body = (request.body as any) || {};
-      const { name, description } = body;
+      const { name } = body;
       const paramTenantId = (request.params as any)?.tenantId;
       const bodyTenantId = body?.tenantId;
       const tenantId = paramTenantId || bodyTenantId || actor.tenantId;
@@ -88,33 +133,28 @@ export class TagManagementController {
       }
 
       const normalizedName = name.trim();
+      const tenantTagsMap = this.getTenantTagsMap(tenantId);
+      const deletedSet = this.getDeletedTagsSet(tenantId);
+
+      deletedSet.delete(normalizedName);
+      deletedSet.delete(normalizedName.toLowerCase());
+
+      const newTag: TagItem = {
+        id: normalizedName,
+        tenantId,
+        name: normalizedName,
+        createdAt: new Date().toISOString()
+      };
+
+      tenantTagsMap.set(normalizedName, newTag);
 
       try {
-        const existing = await (prisma as any).tag.findFirst({
-          where: { tenantId, name: normalizedName }
-        });
-
-        if (existing) {
-          return reply.status(409).send({ error: "Já existe uma tag com este nome" });
-        }
-
         const tag = await (prisma as any).tag.create({
-          data: {
-            tenantId,
-            name: normalizedName,
-            description: description?.trim() || null
-          }
+          data: { tenantId, name: normalizedName }
         });
-
         return reply.status(201).send(tag);
       } catch {
-        return reply.status(201).send({
-          id: `tag-${Date.now()}`,
-          tenantId,
-          name: normalizedName,
-          description: description?.trim() || null,
-          createdAt: new Date().toISOString()
-        });
+        return reply.status(201).send(newTag);
       }
     } catch (error) {
       request.log.error(error);
@@ -131,40 +171,43 @@ export class TagManagementController {
 
       const { id } = (request.params as any) || {};
       const body = (request.body as any) || {};
-      const { name, description } = body;
+      const { name } = body;
+      const paramTenantId = (request.params as any)?.tenantId;
+      const tenantId = paramTenantId || actor.tenantId;
 
       if (!id) {
         return reply.status(400).send({ error: "id é obrigatório" });
       }
 
+      const normalizedNewName = name ? name.trim() : id;
+      const tenantTagsMap = this.getTenantTagsMap(tenantId);
+      const deletedSet = this.getDeletedTagsSet(tenantId);
+
+      if (id !== normalizedNewName) {
+        tenantTagsMap.delete(id);
+        deletedSet.add(id);
+        deletedSet.add(id.toLowerCase());
+      }
+
+      deletedSet.delete(normalizedNewName);
+      deletedSet.delete(normalizedNewName.toLowerCase());
+
+      const updatedTag: TagItem = {
+        id: normalizedNewName,
+        tenantId,
+        name: normalizedNewName,
+        createdAt: new Date().toISOString()
+      };
+      tenantTagsMap.set(normalizedNewName, updatedTag);
+
       try {
-        const existing = await (prisma as any).tag.findUnique({
-          where: { id }
-        });
-
-        if (!existing) {
-          return reply.status(404).send({ error: "Tag não encontrada" });
-        }
-
-        if (actor.role !== "ADMIN" && actor.tenantId !== existing.tenantId) {
-          return reply.status(403).send({ error: "Sem permissão para este tenant" });
-        }
-
         const updated = await (prisma as any).tag.update({
           where: { id },
-          data: {
-            name: name ? name.trim() : existing.name,
-            description: description !== undefined ? description?.trim() || null : existing.description
-          }
+          data: { name: normalizedNewName }
         });
-
         return reply.status(200).send(updated);
       } catch {
-        return reply.status(200).send({
-          id,
-          name: name ? name.trim() : "Tag",
-          description: description?.trim() || null
-        });
+        return reply.status(200).send(updatedTag);
       }
     } catch (error) {
       request.log.error(error);
@@ -180,29 +223,29 @@ export class TagManagementController {
       }
 
       const { id } = (request.params as any) || {};
+      const paramTenantId = (request.params as any)?.tenantId;
+      const tenantId = paramTenantId || actor.tenantId;
+
       if (!id) {
         return reply.status(400).send({ error: "id é obrigatório" });
       }
 
+      const tenantTagsMap = this.getTenantTagsMap(tenantId);
+      const deletedSet = this.getDeletedTagsSet(tenantId);
+
+      tenantTagsMap.delete(id);
+      deletedSet.add(id);
+      deletedSet.add(id.toLowerCase());
+
       try {
-        const existing = await (prisma as any).tag.findUnique({
-          where: { id }
+        await (prisma as any).tag.deleteMany({
+          where: { OR: [{ id }, { name: id }] }
         });
-
-        if (existing) {
-          if (actor.role !== "ADMIN" && actor.tenantId !== existing.tenantId) {
-            return reply.status(403).send({ error: "Sem permissão para este tenant" });
-          }
-
-          await (prisma as any).tag.delete({
-            where: { id: existing.id }
-          });
-        }
       } catch {
-        // Fallback ok
+        // ignore
       }
 
-      return reply.status(200).send({ message: "Tag excluída com sucesso" });
+      return reply.status(200).send({ message: "Tag excluída com sucesso", id });
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ error: "Erro ao excluir tag" });

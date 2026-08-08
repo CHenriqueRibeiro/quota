@@ -1,11 +1,13 @@
 import type { FastifyReply } from 'fastify';
 import { prisma } from '../lib/prisma';
 import * as argon2 from 'argon2';
+import { getPlanLimits } from '../config/plan-limits';
 
 import type {
   AuthenticatedRequest,
   UserRole
 } from '../types/auth';
+
 
 
 
@@ -210,6 +212,14 @@ export class UserController {
           error:'Ambiente não encontrado'
         });
 
+      }
+
+      const currentUserCount = await prisma.user.count({ where: { tenantId: resolvedTenantId } });
+      const limits = getPlanLimits(tenant.plan);
+      if (currentUserCount >= limits.maxUsers) {
+        return reply.status(403).send({
+          error: `Limite de ${limits.maxUsers} usuários atingido para o plano ${tenant.plan}. Faça upgrade para adicionar mais usuários.`
+        });
       }
 
 
@@ -600,14 +610,22 @@ export class UserController {
           tenantId: true,
           scopeId: true,
           createdAt: true,
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              plan: true,
+            },
+          },
           scope: {
             select: {
               id: true,
               name: true,
-              mode: true
-            }
-          }
+              mode: true,
+            },
+          },
         },
+
         orderBy: {
           createdAt: 'desc'
         }

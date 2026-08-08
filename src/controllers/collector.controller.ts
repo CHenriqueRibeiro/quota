@@ -3,8 +3,10 @@ import type { AuthenticatedRequest } from '../types/auth';
 import { addUsageJob } from '../lib/queue';
 import { randomUUID } from 'node:crypto';
 import { prisma } from '../lib/prisma';
+import { getPlanLimits } from '../config/plan-limits';
 
 export class CollectorController {
+
   async execute(
     request: AuthenticatedRequest,
     reply: FastifyReply
@@ -39,6 +41,28 @@ export class CollectorController {
           error: 'Tenant missing'
         });
       }
+
+      const dbTenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { plan: true }
+      });
+      const limits = getPlanLimits(dbTenant?.plan);
+
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const currentMonthUsage = await prisma.usageLog.count({
+        where: {
+          tenantId,
+          createdAt: { gte: startOfMonth }
+        }
+      });
+
+      if (currentMonthUsage >= limits.monthlyRequests) {
+        return reply.status(429).send({
+          error: `Limite mensal de ${limits.monthlyRequests.toLocaleString('pt-BR')} requisições de IA atingido para o plano ${dbTenant?.plan ?? 'STARTER'}. Faça upgrade para continuar utilizando.`
+        });
+      }
+
 
 
       if (!provider || !model) {
@@ -155,11 +179,12 @@ export class CollectorController {
 
 
           tags:
-            body.metadata?.tags ?? [],
-
-
+            Array.isArray(body.metadata?.tags) && body.metadata.tags.length > limits.maxTagsPerRequest
+              ? body.metadata.tags.slice(0, limits.maxTagsPerRequest)
+              : body.metadata?.tags ?? [],
 
         };
+
 
         console.dir(event, { depth: null });
         await addUsageJob(event);

@@ -28,7 +28,8 @@ export class AuthController {
       }
 
       const user = await prisma.user.findUnique({ 
-        where: { email } 
+        where: { email },
+        include: { tenant: true }
       });
 
       let isPasswordValid = false;
@@ -60,10 +61,21 @@ export class AuthController {
         }
       );
 
+      const userPlan = user.tenant?.plan || 'STARTER';
+
       return reply.send({
         token,
-        user: { id: user.id, role: user.role, tenantId: user.tenantId, name: user.name, email: user.email }
+        user: {
+          id: user.id,
+          role: user.role,
+          tenantId: user.tenantId,
+          name: user.name,
+          email: user.email,
+          plan: userPlan,
+          tenant: { id: user.tenantId, plan: userPlan, name: user.tenant?.name }
+        }
       });
+
 
     } catch (error) {
       request.log.error(error, 'Login error occurred');
@@ -274,6 +286,7 @@ export class AuthController {
       const cleanEmail = email.toLowerCase().trim();
       const user = await prisma.user.findUnique({
         where: { email: cleanEmail },
+        include: { tenant: true },
       });
 
       if (!user) {
@@ -288,10 +301,21 @@ export class AuthController {
         { expiresIn: '8h' }
       );
 
+      const userPlan = user.tenant?.plan || 'STARTER';
+
       return reply.send({
         token,
-        user: { id: user.id, role: user.role, tenantId: user.tenantId, name: user.name, email: user.email },
+        user: {
+          id: user.id,
+          role: user.role,
+          tenantId: user.tenantId,
+          name: user.name,
+          email: user.email,
+          plan: userPlan,
+          tenant: { id: user.tenantId, plan: userPlan, name: user.tenant?.name },
+        },
       });
+
     } catch (error) {
       request.log.error({ error }, 'SSO Login error');
       console.error('SSO Login error:', error);
@@ -326,4 +350,42 @@ export class AuthController {
       return reply.status(500).send({ error: 'Erro ao atualizar senha' });
     }
   }
-}
+
+  async getMe(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const actor = (request as AuthenticatedRequest).user;
+      if (!actor) return reply.status(401).send({ error: 'Unauthorized' });
+
+      const user = await prisma.user.findUnique({
+        where: { id: actor.id },
+        include: { tenant: true, scope: true },
+      });
+
+      if (!user) return reply.status(404).send({ error: 'Usuário não encontrado' });
+
+      const userPlan = user.tenant?.plan || 'STARTER';
+
+      return reply.send({
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          tenantId: user.tenantId,
+          tenantName: user.tenant?.name,
+          plan: userPlan,
+          tenant: {
+            id: user.tenantId,
+            name: user.tenant?.name,
+            slug: user.tenant?.slug,
+            plan: userPlan,
+          },
+          scope: user.scope,
+        },
+      });
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Erro ao buscar perfil do usuário' });
+    }
+  }
+}

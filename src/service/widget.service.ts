@@ -1,6 +1,8 @@
 import { prisma } from "../lib/prisma";
 import crypto from "crypto";
 import cloudinary from "../service/cloudinary.service";
+import { getPlanLimits } from "../config/plan-limits";
+
 
 
 interface InitWidgetParams {
@@ -36,8 +38,20 @@ class WidgetService {
 async create(
   data: CreateWidgetBody
 ) {
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: data.tenantId },
+    select: { plan: true }
+  });
+  const currentWidgetCount = await prisma.widget.count({ where: { tenantId: data.tenantId } });
+  const limits = getPlanLimits(tenant?.plan);
+  if (currentWidgetCount >= limits.maxWidgets) {
+    throw new Error(
+      `Limite de ${limits.maxWidgets} widget(s) atingido para o plano ${tenant?.plan ?? 'STARTER'}. Faça upgrade para criar mais widgets.`
+    );
+  }
 
   const assistant =
+
     await prisma.assistant.findFirst({
 
       where:{

@@ -1,8 +1,10 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { prisma } from "../lib/prisma";
 import type { AuthenticatedRequest } from "../types/auth";
+import { getPlanLimits } from "../config/plan-limits";
 
 export class ProjectManagementController {
+
   async list(request: FastifyRequest, reply: FastifyReply) {
     try {
       const actor = (request as AuthenticatedRequest).user;
@@ -68,6 +70,16 @@ export class ProjectManagementController {
       if (existing) {
         return reply.status(409).send({ error: "Já existe um projeto com este nome" });
       }
+
+      const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { plan: true } });
+      const currentProjectCount = await (prisma as any).project.count({ where: { tenantId } });
+      const limits = getPlanLimits(tenant?.plan);
+      if (currentProjectCount >= limits.maxProjects) {
+        return reply.status(403).send({
+          error: `Limite de ${limits.maxProjects} projeto(s) atingido para o plano ${tenant?.plan ?? 'STARTER'}. Faça upgrade para adicionar mais projetos.`
+        });
+      }
+
 
       const project = await (prisma as any).project.create({
         data: {

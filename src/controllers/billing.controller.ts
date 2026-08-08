@@ -1,8 +1,10 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { prisma } from '../lib/prisma';
 import type { AuthenticatedRequest } from '../types/auth';
+import { getPlanLimits } from '../config/plan-limits';
 
 export class BillingController {
+
   async list(request: FastifyRequest, reply: FastifyReply) {
     const actor = (request as AuthenticatedRequest).user;
     const paramTenantId = (request.params as any)?.tenantId;
@@ -41,7 +43,17 @@ export class BillingController {
       return reply.status(400).send({ error: 'name is required' });
     }
 
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { plan: true } });
+    const currentGroupCount = await prisma.billingGroup.count({ where: { tenantId } });
+    const limits = getPlanLimits(tenant?.plan);
+    if (currentGroupCount >= limits.maxBillingGroups) {
+      return reply.status(403).send({
+        error: `Limite de ${limits.maxBillingGroups} grupo(s) de faturamento atingido para o plano ${tenant?.plan ?? 'STARTER'}. Faça upgrade para adicionar mais grupos.`
+      });
+    }
+
     try {
+
       const group = await prisma.billingGroup.create({ data: { tenantId, name } });
       return reply.status(201).send(group);
     } catch (err: any) {

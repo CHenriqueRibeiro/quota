@@ -25,4 +25,10 @@ export async function authRoutes(server: FastifyInstance) {
     { preHandler: [authenticate] }, 
     authController.updatePassword 
   );
+
+  server.get(
+    '/auth/me',
+    { preHandler: [authenticate] },
+    authController.getMe
+  );
 }

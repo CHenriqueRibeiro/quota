@@ -4,6 +4,7 @@ import {
   Prisma
 } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import { getPlanLimits } from "../config/plan-limits";
 
 import type { AuthenticatedUser } from "../types/auth";
 
@@ -404,10 +405,15 @@ class ScopeService {
     startDate: Date,
     endDate: Date
   ): Promise<Prisma.UsageLogWhereInput> {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: user.tenantId },
+      select: { plan: true }
+    });
+    const limits = getPlanLimits(tenant?.plan);
+    const minAllowedDate = new Date();
+    minAllowedDate.setDate(minAllowedDate.getDate() - limits.retentionDays);
 
-
-
-
+    const effectiveStartDate = startDate < minAllowedDate ? minAllowedDate : startDate;
 
     /*
       ADMIN / MANAGER
@@ -433,7 +439,7 @@ class ScopeService {
 
         createdAt: {
 
-          gte: startDate,
+          gte: effectiveStartDate,
 
           lte: endDate
 
@@ -444,12 +450,6 @@ class ScopeService {
 
 
     }
-
-
-
-
-
-
 
 
     /*
@@ -468,18 +468,11 @@ class ScopeService {
       return {
         tenantId: user.tenantId,
         createdAt: {
-          gte: startDate,
+          gte: effectiveStartDate,
           lte: endDate
         }
       };
     }
-
-
-
-
-
-
-
 
 
     /*
@@ -504,7 +497,7 @@ class ScopeService {
 
         createdAt: {
 
-          gte: startDate,
+          gte: effectiveStartDate,
 
           lte: endDate
 
@@ -515,13 +508,6 @@ class ScopeService {
 
 
     }
-
-
-
-
-
-
-
 
 
     /*
@@ -557,11 +543,6 @@ class ScopeService {
     }
 
 
-
-
-
-
-
     const where: Prisma.UsageLogWhereInput = {
 
 
@@ -570,7 +551,7 @@ class ScopeService {
 
       createdAt: {
 
-        gte: startDate,
+        gte: effectiveStartDate,
 
         lte: endDate
 
@@ -578,6 +559,7 @@ class ScopeService {
 
 
     };
+
 
 
 

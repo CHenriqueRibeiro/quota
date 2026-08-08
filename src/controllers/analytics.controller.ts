@@ -1,9 +1,11 @@
 import type { FastifyReply } from "fastify";
 import type { AuthenticatedRequest } from "../types/auth";
 import ScopeService from "../service/scope.service";
-
+import { prisma } from "../lib/prisma";
+import { getPlanLimits } from "../config/plan-limits";
 
 import DashboardService from "../service/analytics/dashboard.service";
+
 
 type DashboardQuery = {
   startDate?: string;
@@ -256,6 +258,15 @@ export class AnalyticsController {
       if (!user || !user.tenantId) {
         return reply.status(401).send({ message: "Usuário ou tenant não identificado." });
       }
+
+      const tenant = await prisma.tenant.findUnique({ where: { id: user.tenantId }, select: { plan: true } });
+      const limits = getPlanLimits(tenant?.plan);
+      if (!limits.canUseBI) {
+        return reply.status(403).send({
+          message: "O Módulo de Self-Service BI e Análises Cruzadas é exclusivo do plano ENTERPRISE."
+        });
+      }
+
 
       const body = (request.body || {}) as {
         startDate?: string;

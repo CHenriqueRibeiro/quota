@@ -31,8 +31,10 @@ import { llmPricingRoutes } from "./src/routes/llm-pricing.routes";
 import { reportsRoutes } from "./src/routes/reports.routes";
 import llmPricingService from "./src/service/llm-pricing.service";
 import reportsService from "./src/service/reports.service";
+import pruningService from "./src/service/pruning.service";
 
 const isProduction = process.env.NODE_ENV === 'production';
+
 
 const server = Fastify({
   logger: isProduction ? { level: 'info' } : true,
@@ -105,6 +107,19 @@ const start = async () => {
         server.log.error('Erro no agendador de relatórios:', err);
       });
     }, 60 * 1000);
+
+    // Inicia expurgo físico diário de logs antigos (Executa à noite - 23:00 PM)
+    setInterval(() => {
+      const currentHour = new Date().getHours();
+      if (currentHour === 23) {
+        pruningService.pruneExpiredLogs().catch((err) => {
+          server.log.error('Erro no expurgo diário de logs antigos:', err);
+        });
+      }
+    }, 60 * 60 * 1000);
+
+
+
 
 
     await prisma.$connect();

@@ -2,6 +2,8 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { AlertPeriod, Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import type { AuthenticatedRequest } from "../types/auth";
+import { getPlanLimits } from "../config/plan-limits";
+
 
 function getPeriodDate(period: AlertPeriod): Date {
   const now = new Date();
@@ -222,7 +224,18 @@ export class BudgetController {
 
       const { limit, period, billingGroupId, project, agent, autoBlock } = body;
 
+      if (autoBlock) {
+        const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { plan: true } });
+        const limits = getPlanLimits(tenant?.plan);
+        if (!limits.canAutoBlockBudget) {
+          return reply.status(403).send({
+            error: "O recurso de Auto-Block (bloqueio automático por estouro de orçamento) está disponível a partir do plano PRO."
+          });
+        }
+      }
+
       if (limit === undefined || limit === null || Number(limit) <= 0) {
+
         return reply.status(400).send({ error: "Limite deve ser um número maior que zero" });
       }
 
@@ -298,8 +311,18 @@ export class BudgetController {
       }
 
       if (autoBlock !== undefined) {
+        if (Boolean(autoBlock)) {
+          const tenant = await prisma.tenant.findUnique({ where: { id: existing.tenantId }, select: { plan: true } });
+          const limits = getPlanLimits(tenant?.plan);
+          if (!limits.canAutoBlockBudget) {
+            return reply.status(403).send({
+              error: "O recurso de Auto-Block (bloqueio automático por estouro de orçamento) está disponível a partir do plano PRO."
+            });
+          }
+        }
         dataToUpdate.autoBlock = Boolean(autoBlock);
       }
+
 
       if (billingGroupId !== undefined) {
         if (billingGroupId) {

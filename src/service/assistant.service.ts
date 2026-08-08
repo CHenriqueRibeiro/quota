@@ -1,8 +1,10 @@
 import { ProviderName, AssistantType } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import type { AuthenticatedUser } from "../types/auth";
+import { getPlanLimits } from "../config/plan-limits";
 
 interface CreateAssistantBody {
+
 
   name: string;
 
@@ -36,8 +38,20 @@ class AssistantService {
   user: AuthenticatedUser,
   data: CreateAssistantBody
 ){
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: user.tenantId },
+    select: { plan: true }
+  });
+  const currentCount = await prisma.assistant.count({ where: { tenantId: user.tenantId } });
+  const limits = getPlanLimits(tenant?.plan);
+  if (currentCount >= limits.maxAssistants) {
+    throw new Error(
+      `Limite de ${limits.maxAssistants} assistente(s) atingido para o plano ${tenant?.plan ?? 'STARTER'}. Faça upgrade para criar mais assistentes.`
+    );
+  }
 
   if(!data.name.trim()){
+
 
     throw new Error(
       "Nome é obrigatório."

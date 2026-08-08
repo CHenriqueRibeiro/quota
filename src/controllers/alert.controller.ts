@@ -3,6 +3,7 @@ import type { AuthenticatedRequest } from "../types/auth";
 import { prisma } from "../lib/prisma";
 import { processAlerts } from "../service/alert-engine.service";
 import { triggerAlert } from "../service/alert.service";
+import { getPlanLimits } from "../config/plan-limits";
 
 
 class AlertController {
@@ -23,6 +24,15 @@ class AlertController {
       if (actor.role !== "ADMIN" && actor.tenantId !== targetTenantId) {
         return reply.status(403).send({ error: "Sem permissão para este tenant" });
       }
+
+      const tenant = await prisma.tenant.findUnique({ where: { id: targetTenantId }, select: { plan: true } });
+      const limits = getPlanLimits(tenant?.plan);
+      if (!limits.canCreateAlerts) {
+        return reply.status(403).send({
+          error: "A criação e configuração de alertas em tempo real está disponível a partir do plano PRO."
+        });
+      }
+
 
       const {
         type: rawType,

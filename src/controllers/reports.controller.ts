@@ -2,8 +2,10 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { prisma } from "../lib/prisma";
 import type { AuthenticatedRequest } from "../types/auth";
 import reportsService from "../service/reports.service";
+import { getPlanLimits } from "../config/plan-limits";
 
 export class ReportsController {
+
   async exportDetailed(request: FastifyRequest, reply: FastifyReply) {
     try {
       const actor = (request as AuthenticatedRequest).user;
@@ -15,7 +17,16 @@ export class ReportsController {
 
       if (!tenantId) return reply.status(400).send({ error: "tenantId é obrigatório" });
 
+      const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { plan: true } });
+      const limits = getPlanLimits(tenant?.plan);
+      if (!limits.canExportReports) {
+        return reply.status(403).send({
+          error: "A exportação de relatórios em CSV/HTML está disponível a partir do plano PRO."
+        });
+      }
+
       const startDate = query.startDate || body.startDate ? new Date(query.startDate || body.startDate) : undefined;
+
       const endDate = query.endDate || body.endDate ? new Date(query.endDate || body.endDate) : undefined;
 
       const csvData = await reportsService.generateDetailedCsv({
@@ -48,7 +59,16 @@ export class ReportsController {
 
       if (!tenantId) return reply.status(400).send({ error: "tenantId é obrigatório" });
 
+      const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { plan: true } });
+      const limits = getPlanLimits(tenant?.plan);
+      if (!limits.canExportReports) {
+        return reply.status(403).send({
+          error: "A exportação de relatórios em CSV/HTML está disponível a partir do plano PRO."
+        });
+      }
+
       const startDate = query.startDate || body.startDate ? new Date(query.startDate || body.startDate) : undefined;
+
       const endDate = query.endDate || body.endDate ? new Date(query.endDate || body.endDate) : undefined;
 
       const csvData = await reportsService.generateOverviewCsv({
@@ -139,7 +159,17 @@ export class ReportsController {
 
       const body = (request.body as any) || {};
       const tenantId = body.tenantId || actor.tenantId;
+
+      const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { plan: true } });
+      const limits = getPlanLimits(tenant?.plan);
+      if (!limits.canScheduleReports) {
+        return reply.status(403).send({
+          error: "O agendamento automático de relatórios por e-mail está disponível a partir do plano PRO."
+        });
+      }
+
       const { name, frequency, time, email, ccEmails, reportType, format, billingGroupId, project, agent, provider, dayOfWeek, dayOfMonth } = body;
+
 
       if (!name || !frequency || !email) {
         return reply.status(400).send({ error: "Nome, frequência e e-mail são obrigatórios" });

@@ -5,8 +5,10 @@ import crypto from 'crypto';
 import { addUsageJob } from '../lib/queue';
 import { normalizeProvider, SUPPORTED_PROVIDERS, type SupportedProvider } from '../lib/providers';
 import { callProvider } from '../lib/provider-client';
+import { getPlanLimits } from '../config/plan-limits';
 
 export class ProxyController {
+
   async execute(request: AuthenticatedRequest, reply: FastifyReply) {
     const body = request.body as any;
 
@@ -63,7 +65,33 @@ if (!tenantId) {
   });
 }
 
+const dbTenant = await prisma.tenant.findUnique({
+  where: { id: tenantId },
+  select: { plan: true }
+});
+const limits = getPlanLimits(dbTenant?.plan);
+
+const now = new Date();
+const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+const currentMonthUsage = await prisma.usageLog.count({
+  where: {
+    tenantId,
+    createdAt: { gte: startOfMonth }
+  }
+});
+
+if (currentMonthUsage >= limits.monthlyRequests) {
+  return reply.status(429).send({
+    error: `Limite mensal de ${limits.monthlyRequests.toLocaleString('pt-BR')} requisições de IA atingido para o plano ${dbTenant?.plan ?? 'STARTER'}. Faça upgrade para continuar utilizando.`
+  });
+}
+
+if (context.tags && Array.isArray(context.tags) && context.tags.length > limits.maxTagsPerRequest) {
+  context.tags = context.tags.slice(0, limits.maxTagsPerRequest);
+}
+
 if (!SUPPORTED_PROVIDERS.some(item => item.key === quotaApiKey.provider)) {
+
   return reply.status(400).send({
     error: "Provider da API Key inválido"
   });
