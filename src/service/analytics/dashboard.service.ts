@@ -838,4 +838,53 @@ static async getJobs(
       },
     };
   }
+
+  static async queryBI(where: Prisma.UsageLogWhereInput, dimension: string = "provider") {
+    const validDimensions = [
+      "provider",
+      "model",
+      "agent",
+      "project",
+      "environment",
+      "billingGroupId",
+      "externalUserId"
+    ];
+
+    const groupByField = validDimensions.includes(dimension) ? (dimension as any) : "provider";
+
+    const aggregated = await prisma.usageLog.groupBy({
+      where,
+      by: [groupByField],
+      _sum: {
+        totalTokens: true,
+        promptTokens: true,
+        completionTokens: true,
+        estimatedCost: true
+      },
+      _avg: {
+        latencyMs: true
+      },
+      _count: {
+        id: true
+      }
+    });
+
+    return aggregated.map(item => {
+      const reqCount = item._count.id || 0;
+      const totalCost = Number(item._sum.estimatedCost ?? 0);
+      const totalToks = item._sum.totalTokens ?? 0;
+
+      return {
+        name: String(item[groupByField] || "Outros"),
+        requests: reqCount,
+        tokens: totalToks,
+        inputTokens: item._sum.promptTokens ?? 0,
+        outputTokens: item._sum.completionTokens ?? 0,
+        cost: totalCost,
+        latency: Math.round(Number(item._avg.latencyMs ?? 0)),
+        costPerReq: reqCount > 0 ? totalCost / reqCount : 0,
+        costPer1kTokens: totalToks > 0 ? (totalCost / (totalToks / 1000)) : 0
+      };
+    });
+  }
 }

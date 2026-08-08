@@ -108,134 +108,55 @@ return {
 
 
 
-    const totalRequests =
-      await prisma.usageLog.count({
+    const retryWhere: Prisma.FailedUsageWhereInput = {
+      tenantId:
+        where.tenantId as string
+    };
 
+    if(where.createdAt){
+      retryWhere.createdAt = {
+        gte:
+          (where.createdAt as Prisma.DateTimeFilter).gte as Date,
+        lte:
+          (where.createdAt as Prisma.DateTimeFilter).lte as Date
+      };
+    }
+
+    const [
+      totalRequests,
+      failedRequests,
+      latencyResult,
+      retryRequests,
+      quota
+    ] = await Promise.all([
+      prisma.usageLog.count({
         where
-
-      });
-
-
-
-
-
-
-
-    const failedRequests =
-      await prisma.usageLog.count({
-
+      }),
+      prisma.usageLog.count({
         where:{
-
           ...where,
-
           success:false
-
         }
-
-      });
-
-
-
-
-
-
-
-    const latencyResult =
-      await prisma.usageLog.aggregate({
-
+      }),
+      prisma.usageLog.aggregate({
         where,
-
         _avg:{
-
           latencyMs:true
-
         }
-
-      });
-
-
-
-
-
-
+      }),
+      prisma.failedUsage.count({
+        where:retryWhere
+      }),
+      prisma.quota.findUnique({
+        where:{
+          tenantId:
+            where.tenantId as string
+        }
+      })
+    ]);
 
     const averageLatency =
       latencyResult._avg.latencyMs ?? 0;
-
-
-
-
-
-
-
-
-
-    const retryWhere: Prisma.FailedUsageWhereInput = {
-
-
-      tenantId:
-        where.tenantId as string
-
-
-    };
-
-
-
-
-
-
-
-    if(where.createdAt){
-
-
-      retryWhere.createdAt = {
-
-
-        gte:
-          (where.createdAt as Prisma.DateTimeFilter).gte as Date,
-
-
-        lte:
-          (where.createdAt as Prisma.DateTimeFilter).lte as Date
-
-
-      };
-
-
-    }
-
-
-
-
-
-
-
-    const retryRequests =
-      await prisma.failedUsage.count({
-
-        where:retryWhere
-
-      });
-
-
-
-
-
-
-
-
-
-    const quota =
-      await prisma.quota.findUnique({
-
-        where:{
-
-          tenantId:
-            where.tenantId as string
-
-        }
-
-      });
 
 
 

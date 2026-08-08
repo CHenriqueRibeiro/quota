@@ -71,83 +71,66 @@ export class AnalyticsController {
         endDate
       );
 
-    const summary =
-  await DashboardService.getSummary(
-    where,
-    startDate,
-    endDate
-  );
+    let successFilter: boolean | undefined = undefined;
+    if (query.success !== undefined) {
+      if (query.success === "true") successFilter = true;
+      if (query.success === "false") successFilter = false;
+    }
 
-const providers =
-  await DashboardService.getProviders(where);
+    const [
+      summary,
+      providers,
+      models,
+      projects,
+      agents,
+      tags,
+      users,
+      billingGroups,
+      dailyConsumption,
+      latency,
+      errors,
+      jobs,
+      logs
+    ] = await Promise.all([
+      DashboardService.getSummary(where, startDate, endDate),
+      DashboardService.getProviders(where),
+      DashboardService.getModels(where),
+      DashboardService.getProjects(where),
+      DashboardService.getAgents(where),
+      DashboardService.getTags(where),
+      DashboardService.getUsers(where),
+      DashboardService.getBillingGroups(where),
+      DashboardService.getDailyConsumption(where),
+      DashboardService.getLatency(where),
+      DashboardService.getErrors(where),
+      DashboardService.getJobs(where, tenantId, startDate, endDate),
+      DashboardService.getPaginatedLogs(where, {
+        page: query.page ? parseInt(query.page, 10) : 1,
+        limit: query.limit ? parseInt(query.limit, 10) : 20,
+        provider: query.provider,
+        model: query.model,
+        success: successFilter,
+        project: query.project,
+        agent: query.agent,
+        search: query.search,
+      })
+    ]);
 
-const models =
-  await DashboardService.getModels(where);
-
-const projects =
-  await DashboardService.getProjects(where);
-
-const agents =
-  await DashboardService.getAgents(where);
-
-const tags =
-  await DashboardService.getTags(where);
-
-const users =
-  await DashboardService.getUsers(where);
-
-const billingGroups =
-  await DashboardService.getBillingGroups(where);
-
-const dailyConsumption =
-  await DashboardService.getDailyConsumption(where);
-
-const latency =
-  await DashboardService.getLatency(where);
-
-const errors =
-  await DashboardService.getErrors(where);
-
-const jobs =
-  await DashboardService.getJobs(
-    where,
-    tenantId,
-    startDate,
-    endDate
-);
-
-let successFilter: boolean | undefined = undefined;
-if (query.success !== undefined) {
-  if (query.success === "true") successFilter = true;
-  if (query.success === "false") successFilter = false;
-}
-
-const logs = await DashboardService.getPaginatedLogs(where, {
-  page: query.page ? parseInt(query.page, 10) : 1,
-  limit: query.limit ? parseInt(query.limit, 10) : 20,
-  provider: query.provider,
-  model: query.model,
-  success: successFilter,
-  project: query.project,
-  agent: query.agent,
-  search: query.search,
-});
-
-return reply.send({
-  summary,
-  providers,
-  models,
-  projects,
-  billingGroups,
-  users,
-  agents,
-  tags,
-  dailyConsumption,
-  latency,
-  errors,
-  jobs,
-  logs,
-});
+    return reply.send({
+      summary,
+      providers,
+      models,
+      projects,
+      billingGroups,
+      users,
+      agents,
+      tags,
+      dailyConsumption,
+      latency,
+      errors,
+      jobs,
+      logs,
+    });
 
   } catch (error) {
 
@@ -264,6 +247,43 @@ return reply.send({
       return reply.status(500).send({
         message: "Erro ao buscar logs paginados."
       });
+    }
+  }
+
+  async queryBI(request: AuthenticatedRequest, reply: FastifyReply) {
+    try {
+      const user = request.user;
+      if (!user || !user.tenantId) {
+        return reply.status(401).send({ message: "Usuário ou tenant não identificado." });
+      }
+
+      const body = (request.body || {}) as {
+        startDate?: string;
+        endDate?: string;
+        dimension?: string;
+        environment?: string;
+      };
+
+      const now = new Date();
+      const startDate = body.startDate ? new Date(body.startDate) : new Date(now.getFullYear(), now.getMonth(), 1);
+      let endDate = now;
+      if (body.endDate) {
+        endDate = new Date(body.endDate);
+        if (body.endDate.length <= 10) endDate.setUTCHours(23, 59, 59, 999);
+      }
+
+      const where = await ScopeService.buildWhere(user, startDate, endDate);
+      if (body.environment && body.environment !== 'all') {
+        (where as any).environment = body.environment;
+      }
+
+      const dimension = body.dimension || "provider";
+      const data = await DashboardService.queryBI(where, dimension);
+
+      return reply.send({ dimension, data });
+    } catch (error) {
+      console.error("Erro na rota queryBI:", error);
+      return reply.status(500).send({ message: "Erro ao processar consulta de BI." });
     }
   }
 }

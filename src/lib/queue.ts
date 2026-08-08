@@ -7,6 +7,8 @@ export const connectionOptions = {
   host: parsed.hostname,
   port: Number(parsed.port || 6379),
   password: parsed.password || undefined,
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
 };
 
 export const usageQueue = new Queue("usage", {
@@ -31,8 +33,12 @@ export async function addUsageJob(payload: any, opts?: any) {
     },
     removeOnComplete: opts?.removeOnComplete ?? {
       age: 3600,
+      count: 1000,
     },
-    removeOnFail: opts?.removeOnFail ?? 100,
+    removeOnFail: opts?.removeOnFail ?? {
+      age: 86400,
+      count: 1000,
+    },
     ...(opts ?? {}),
   });
 }

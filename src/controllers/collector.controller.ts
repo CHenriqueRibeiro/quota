@@ -1,6 +1,6 @@
 import type { FastifyReply } from 'fastify';
 import type { AuthenticatedRequest } from '../types/auth';
-import { usageQueue } from '../lib/queue';
+import { addUsageJob } from '../lib/queue';
 import { randomUUID } from 'node:crypto';
 import { prisma } from '../lib/prisma';
 
@@ -50,137 +50,135 @@ export class CollectorController {
       const project = body.metadata?.project ?? body.project;
       const agent = body.metadata?.agent ?? body.agent;
 
-      if (project) {
-        const dbProject = await (prisma as any).project.findFirst({
-          where: { tenantId, name: project }
-        });
-        if (!dbProject) {
-          return reply.status(400).send({
-            error: `Projeto '${project}' não está cadastrado no tenant.`
-          });
+        if (project || agent) {
+          const [dbProject, dbAgent] = await Promise.all([
+            project
+              ? (prisma as any).project.findFirst({ where: { tenantId, name: project } })
+              : Promise.resolve(true),
+            agent
+              ? (prisma as any).agent.findFirst({ where: { tenantId, name: agent } })
+              : Promise.resolve(true),
+          ]);
+
+          if (project && !dbProject) {
+            return reply.status(400).send({
+              error: `Projeto '${project}' não está cadastrado no tenant.`
+            });
+          }
+
+          if (agent && !dbAgent) {
+            return reply.status(400).send({
+              error: `Agente '${agent}' não está cadastrado no tenant.`
+            });
+          }
         }
-      }
 
-      if (agent) {
-        const dbAgent = await (prisma as any).agent.findFirst({
-          where: { tenantId, name: agent }
+
+        const event = {
+          source: 'collector',
+
+          tenantId,
+
+          apiKeyId,
+
+          traceId:
+            body.traceId ?? randomUUID(),
+          requestId:
+            body.requestId ?? randomUUID(),
+
+
+          provider:
+            body.provider,
+
+
+          model:
+            body.model,
+
+
+          promptTokens:
+            Number(body.promptTokens ?? 0),
+
+
+          completionTokens:
+            Number(body.completionTokens ?? 0),
+
+
+          totalTokens:
+            Number(body.totalTokens ?? 0),
+
+
+          cachedTokens:
+            Number(body.cachedTokens ?? body.prompt_tokens_details?.cached_tokens ?? body.cachedContentTokenCount ?? body.cache_read_input_tokens ?? 0),
+
+
+          reasoningTokens:
+            Number(body.reasoningTokens ?? body.completion_tokens_details?.reasoning_tokens ?? body.thoughtsTokenCount ?? 0),
+
+
+          cacheCreationTokens:
+            Number(body.cacheCreationTokens ?? body.cache_creation_input_tokens ?? 0),
+
+
+          latencyMs:
+            Number(body.latencyMs ?? 0),
+
+          estimatedCost:
+            Number(body.estimatedCost ?? body.estimatedCostUsd ?? 0),
+
+
+          statusCode:
+            Number(body.statusCode ?? 200),
+
+
+          success:
+            body.success ?? true,
+
+
+          agent:
+            body.metadata?.agent ?? null,
+
+
+          project:
+            body.metadata?.project ?? null,
+
+
+          environment:
+            body.metadata?.environment ?? null,
+
+          billingGroup: body.billingGroup ?? null,
+          externalUserId:
+            body.metadata?.externalUserId ?? null,
+
+
+          requestGroup:
+            body.metadata?.requestGroup ?? null,
+
+
+          tags:
+            body.metadata?.tags ?? [],
+
+
+
+        };
+
+        console.dir(event, { depth: null });
+        await addUsageJob(event);
+
+
+        return reply.status(202).send({
+          success: true,
+          requestId: event.requestId
         });
-        if (!dbAgent) {
-          return reply.status(400).send({
-            error: `Agente '${agent}' não está cadastrado no tenant.`
-          });
-        }
+
+
+      } catch (error) {
+
+        request.log.error(error);
+
+
+        return reply.status(500).send({
+          error: 'Collector failed'
+        });
       }
-
-
-      const event = {
-        source: 'collector',
-
-        tenantId,
-
-        apiKeyId,
-
-        traceId:
-          body.traceId ?? randomUUID(),
-        requestId:
-          body.requestId ?? randomUUID(),
-
-
-        provider:
-          body.provider,
-
-
-        model:
-          body.model,
-
-
-        promptTokens:
-          Number(body.promptTokens ?? 0),
-
-
-        completionTokens:
-          Number(body.completionTokens ?? 0),
-
-
-        totalTokens:
-          Number(body.totalTokens ?? 0),
-
-
-        cachedTokens:
-          Number(body.cachedTokens ?? body.prompt_tokens_details?.cached_tokens ?? body.cachedContentTokenCount ?? body.cache_read_input_tokens ?? 0),
-
-
-        reasoningTokens:
-          Number(body.reasoningTokens ?? body.completion_tokens_details?.reasoning_tokens ?? body.thoughtsTokenCount ?? 0),
-
-
-        cacheCreationTokens:
-          Number(body.cacheCreationTokens ?? body.cache_creation_input_tokens ?? 0),
-
-
-        latencyMs:
-          Number(body.latencyMs ?? 0),
-
-        estimatedCost:
-          Number(body.estimatedCost ?? body.estimatedCostUsd ?? 0),
-
-
-        statusCode:
-          Number(body.statusCode ?? 200),
-
-
-        success:
-          body.success ?? true,
-
-
-        agent:
-          body.metadata?.agent ?? null,
-
-
-        project:
-          body.metadata?.project ?? null,
-
-
-        environment:
-          body.metadata?.environment ?? null,
-
-        billingGroup: body.billingGroup ?? null,
-        externalUserId:
-          body.metadata?.externalUserId ?? null,
-
-
-        requestGroup:
-          body.metadata?.requestGroup ?? null,
-
-
-        tags:
-          body.metadata?.tags ?? [],
-
-
-
-      };
-
-console.dir(event, { depth: null });
-      await usageQueue.add(
-        'usage',
-        event
-      );
-
-
-      return reply.status(202).send({
-        success: true,
-        requestId: event.requestId
-      });
-
-
-    } catch (error) {
-
-      request.log.error(error);
-
-
-      return reply.status(500).send({
-        error: 'Collector failed'
-      });
     }
-  }
 }

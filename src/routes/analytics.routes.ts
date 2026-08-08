@@ -198,4 +198,14 @@ server.get(
   },
   analyticsController.logs
 );
+
+server.post(
+  "/analytics/bi/query",
+  {
+    preHandler: [
+      authenticate
+    ]
+  },
+  analyticsController.queryBI
+);
 }

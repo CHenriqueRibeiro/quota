@@ -57,58 +57,48 @@ if (allowed && allowed.length > 0 && !allowed.includes(model)) {
   });
 }
 
-if (!quotaApiKey) {
-  return reply.status(401).send({
-    error: 'API Key do Quota não encontrada'
-  });
-}
-
 if (!tenantId) {
   return reply.status(401).send({
     error: 'Tenant não encontrado para essa requisição'
   });
 }
 
-if (context.project) {
-  const dbProject = await (prisma as any).project.findFirst({
-    where: { tenantId, name: context.project }
+if (!SUPPORTED_PROVIDERS.some(item => item.key === quotaApiKey.provider)) {
+  return reply.status(400).send({
+    error: "Provider da API Key inválido"
   });
-  if (!dbProject) {
-    return reply.status(400).send({
-      error: `Projeto '${context.project}' não está cadastrado no tenant.`
-    });
-  }
 }
 
-if (context.agent) {
-  const dbAgent = await (prisma as any).agent.findFirst({
-    where: { tenantId, name: context.agent }
+const [dbProject, dbAgent, credential] = await Promise.all([
+  context.project
+    ? (prisma as any).project.findFirst({ where: { tenantId, name: context.project } })
+    : Promise.resolve(true),
+  context.agent
+    ? (prisma as any).agent.findFirst({ where: { tenantId, name: context.agent } })
+    : Promise.resolve(true),
+  prisma.providerCredential.findUnique({
+    where: { id: quotaApiKey.providerCredentialId }
+  }),
+]);
+
+if (context.project && !dbProject) {
+  return reply.status(400).send({
+    error: `Projeto '${context.project}' não está cadastrado no tenant.`
   });
-  if (!dbAgent) {
-    return reply.status(400).send({
-      error: `Agente '${context.agent}' não está cadastrado no tenant.`
-    });
-  }
 }
 
-    if (!SUPPORTED_PROVIDERS.some(item => item.key === quotaApiKey.provider)) {
- return reply.status(400).send({
-   error:"Provider da API Key inválido"
- });
+if (context.agent && !dbAgent) {
+  return reply.status(400).send({
+    error: `Agente '${context.agent}' não está cadastrado no tenant.`
+  });
 }
-
-    const credential = await prisma.providerCredential.findUnique({
-  where: {
-    id: quotaApiKey.providerCredentialId
-  }
-});
-
 
 if (!credential || !credential.isActive) {
   return reply.status(400).send({
     error: 'Provider credential não encontrado ou inativo'
   });
 }
+
 if (credential.provider !== provider) {
   return reply.status(400).send({
     error: 'Provider não corresponde à API Key'
