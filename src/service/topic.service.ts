@@ -6,6 +6,18 @@ import DashboardService from "./analytics/dashboard.service";
 import { callProvider } from "../lib/provider-client";
 import { isSupportedProvider } from "../lib/providers";
 
+export type TopicAnswer = {
+  provider?: any;
+  model?: any;
+  statusCode?: number;
+  latencyMs?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+  content: any;
+  raw?: any;
+};
+
 type DefaultTopic = {
   key:string;
   name:string;
@@ -911,7 +923,7 @@ class TopicService {
         period.endDate
       );
 
-    let answer =
+    let answer: TopicAnswer | null =
       topic.assistant
         ? await this.callAssistant(
             topic.assistant,
