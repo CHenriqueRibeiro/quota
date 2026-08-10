@@ -330,9 +330,40 @@ export class ReportsService {
    */
   async processDueReportSchedules() {
     const now = new Date();
-    const currentHHmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-    const currentDayOfWeek = now.getDay(); // 0 (Dom) - 6 (Sáb)
-    const currentDayOfMonth = now.getDate(); // 1 - 31
+
+    const timeParts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Fortaleza",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(now);
+
+    let hour = "00", minute = "00";
+    for (const p of timeParts) {
+      if (p.type === "hour") hour = p.value.padStart(2, "0");
+      if (p.type === "minute") minute = p.value.padStart(2, "0");
+    }
+    if (hour === "24") hour = "00";
+    const currentHHmm = `${hour}:${minute}`;
+
+    const dateParts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Fortaleza",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+    }).formatToParts(now);
+
+    let year = "", month = "", day = "";
+    for (const p of dateParts) {
+      if (p.type === "year") year = p.value;
+      if (p.type === "month") month = p.value.padStart(2, "0");
+      if (p.type === "day") day = p.value.padStart(2, "0");
+    }
+    const brtDateStr = `${year}-${month}-${day}`;
+
+    const brtDateObj = new Date(`${brtDateStr}T12:00:00-03:00`);
+    const currentDayOfWeek = brtDateObj.getDay();
+    const currentDayOfMonth = Number(day);
 
     const schedules = await prisma.reportSchedule.findMany({
       where: { enabled: true }
@@ -347,11 +378,29 @@ export class ReportsService {
         // Checa se já foi enviado HOJE no horário agendado ou depois
         if (schedule.lastSentAt) {
           const lastSent = new Date(schedule.lastSentAt);
-          const isSameDay = lastSent.getFullYear() === now.getFullYear() &&
-            lastSent.getMonth() === now.getMonth() &&
-            lastSent.getDate() === now.getDate();
+          const lsParts = new Intl.DateTimeFormat("en-US", {
+            timeZone: "America/Fortaleza",
+            year: "numeric",
+            month: "numeric",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }).formatToParts(lastSent);
 
-          const lastSentHHmm = `${String(lastSent.getHours()).padStart(2, "0")}:${String(lastSent.getMinutes()).padStart(2, "0")}`;
+          let lsY = "", lsM = "", lsD = "", lsH = "00", lsMin = "00";
+          for (const p of lsParts) {
+            if (p.type === "year") lsY = p.value;
+            if (p.type === "month") lsM = p.value.padStart(2, "0");
+            if (p.type === "day") lsD = p.value.padStart(2, "0");
+            if (p.type === "hour") lsH = p.value.padStart(2, "0");
+            if (p.type === "minute") lsMin = p.value.padStart(2, "0");
+          }
+          if (lsH === "24") lsH = "00";
+          const lastSentDateStr = `${lsY}-${lsM}-${lsD}`;
+          const lastSentHHmm = `${lsH}:${lsMin}`;
+
+          const isSameDay = lastSentDateStr === brtDateStr;
 
           if (isSameDay && lastSentHHmm >= scheduleTime) {
             continue; // Já foi enviado no horário de hoje

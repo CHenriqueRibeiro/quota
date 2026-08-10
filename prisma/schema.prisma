@@ -754,10 +754,27 @@ model BiReport {
   tabsConfig   Json
   customFields Json?
 
+  // CHAVE/LINK PÚBLICO E REVOGAÇÃO SEGURA
+  shareToken       String?   @unique
+  isPublic         Boolean   @default(false)
+  publicExpiresAt  DateTime?
+  isRevoked        Boolean   @default(false)
+
+  // AGENDAMENTO DE ENVIO POR EMAIL
+  scheduleEnabled   Boolean   @default(false)
+  scheduleEmail     String?
+  scheduleCc        String[]  @default([])
+  scheduleFrequency String?   // 'DAILY' | 'WEEKLY' | 'MONTHLY'
+  scheduleDayOfWeek Int?      // 0-6
+  scheduleDayOfMonth Int?     // 1-31
+  scheduleTime      String?   // "08:00"
+  lastSentAt        DateTime?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([tenantId])
+  @@index([shareToken])
   @@map("bi_reports")
 }
 

@@ -1,5 +1,6 @@
 import { prisma } from "../lib/prisma";
 import reportsService from "../service/reports.service";
+import biReportService from "../service/analytics/bi-report.service";
 
 let isProcessing = false;
 
@@ -20,6 +21,7 @@ async function runReportsCycle() {
     );
 
     await reportsService.processDueReportSchedules();
+    await biReportService.processDueBiReportSchedules();
   } catch (error) {
     console.error(
       `[Reports Worker] Erro durante o ciclo de verificação em ${getFortalezaDateTime()}:`,

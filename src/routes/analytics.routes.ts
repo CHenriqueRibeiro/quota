@@ -246,4 +246,28 @@ export async function analyticsRoutes(
     { preHandler: [authenticate] },
     biReportController.deleteReport.bind(biReportController)
   );
+
+  server.post(
+    "/analytics/bi/reports/:id/share",
+    { preHandler: [authenticate] },
+    biReportController.shareReport.bind(biReportController)
+  );
+
+  server.post(
+    "/analytics/bi/reports/:id/revoke",
+    { preHandler: [authenticate] },
+    biReportController.revokeShare.bind(biReportController)
+  );
+
+  server.post(
+    "/analytics/bi/reports/:id/schedule",
+    { preHandler: [authenticate] },
+    biReportController.updateSchedule.bind(biReportController)
+  );
+
+  // ROTA PÚBLICA LIVRE (SEM AUTENTICAÇÃO JWT)
+  server.get(
+    "/public/bi-report/:token",
+    biReportController.getPublicReport.bind(biReportController)
+  );
 }
