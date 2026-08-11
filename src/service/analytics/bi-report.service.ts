@@ -227,7 +227,20 @@ export class BIReportService {
       return { status: 'EXPIRED', report: null };
     }
 
-    return { status: 'VALID', report };
+    // Busca os registros reais de uso (UsageLog) do tenant para alimentar o relatório BI público
+    const usageLogs = await prisma.usageLog.findMany({
+      where: { tenantId: report.tenantId },
+      orderBy: { createdAt: 'desc' },
+      take: 1000,
+    });
+
+    return {
+      status: 'VALID',
+      report: {
+        ...report,
+        usageLogs,
+      },
+    };
   }
 
   /**
@@ -359,6 +372,9 @@ export class BIReportService {
             },
           });
 
+          const freqMap: Record<string, string> = { DAILY: "Diário", WEEKLY: "Semanal", MONTHLY: "Mensal" };
+          const freqLabel = freqMap[(report.scheduleFrequency || "WEEKLY").toUpperCase()] || report.scheduleFrequency || "Semanal";
+
           try {
             await sendEmail({
               to: report.scheduleEmail,
@@ -367,7 +383,7 @@ export class BIReportService {
               html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;">
                   <div style="margin-bottom: 20px; border-bottom: 2px solid #2563eb; padding-bottom: 12px;">
-                    <h2 style="color: #0f172a; margin: 0 0 6px 0; font-size: 20px;">📊 Relatório BI Agendado: ${report.title}</h2>
+                    <h2 style="color: #0f172a; margin: 0 0 6px 0; font-size: 20px;">Relatório BI Agendado: ${report.title}</h2>
                     <p style="color: #64748b; margin: 0; font-size: 13px;">Relatório automatizado de inteligência e consumo de LLMs</p>
                   </div>
 
@@ -377,14 +393,14 @@ export class BIReportService {
 
                   <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 20px 0; font-size: 13px;">
                     <p style="margin: 0 0 8px 0;"><strong>Organização:</strong> ${report.tenant?.name || 'Sua Conta'}</p>
-                    <p style="margin: 0 0 8px 0;"><strong>Frequência:</strong> ${report.scheduleFrequency || 'WEEKLY'}</p>
+                    <p style="margin: 0 0 8px 0;"><strong>Frequência:</strong> ${freqLabel}</p>
                     <p style="margin: 0;"><strong>Horário de Envio:</strong> ${scheduleTime} (Fuso Horário BRT)</p>
                   </div>
 
                   ${publicUrl ? `
                     <div style="margin: 24px 0; text-align: center;">
                       <a href="${publicUrl}" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 14px; display: inline-block;">
-                        🔗 Acessar Dashboard Interativo
+                        Acessar Dashboard Interativo
                       </a>
                     </div>
                   ` : ''}

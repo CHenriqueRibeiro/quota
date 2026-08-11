@@ -454,13 +454,16 @@ export class ReportsService {
             });
           }
 
+          const freqMap: Record<string, string> = { DAILY: "Diário", WEEKLY: "Semanal", MONTHLY: "Mensal" };
+          const freqLabel = freqMap[(schedule.frequency || "WEEKLY").toUpperCase()] || schedule.frequency;
+
           // Registra a notificação no histórico (status inicial: PENDING)
           const notification = await prisma.notification.create({
             data: {
               tenantId: schedule.tenantId,
               reportScheduleId: schedule.id,
               title: `Relatório Agendado: ${schedule.name}`,
-              message: `Disparo do relatório "${schedule.name}" (${schedule.frequency}) para o e-mail ${schedule.email}.`,
+              message: `Disparo do relatório "${schedule.name}" (${freqLabel}) para o e-mail ${schedule.email}.`,
               channel: "EMAIL",
               status: "PENDING",
             },
@@ -470,12 +473,12 @@ export class ReportsService {
             await sendEmail({
               to: schedule.email,
               cc: schedule.ccEmails,
-              subject: `[Agendamento] ${schedule.name} (${schedule.frequency})`,
+              subject: `[Agendamento] ${schedule.name} (${freqLabel})`,
               html: `
                 <h2>Relatório Agendado: ${schedule.name}</h2>
                 <p>Segue em anexo o relatório automatizado gerado pelo Quota para a sua organização.</p>
                 <ul>
-                  <li><strong>Frequência:</strong> ${schedule.frequency}</li>
+                  <li><strong>Frequência:</strong> ${freqLabel}</li>
                   <li><strong>Data de Geração:</strong> ${now.toLocaleString("pt-BR")}</li>
                 </ul>
                 <p>Os arquivos CSV detalhados estão em anexo.</p>
