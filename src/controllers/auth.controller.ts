@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import jwt from 'jsonwebtoken';
 import * as argon2 from 'argon2';
 import type { AuthenticatedRequest } from '../types/auth';
+import auditService from '../service/audit.service';
 
 const getBackendUrl = (request: FastifyRequest) => {
   const host = request.headers.host || `localhost:${process.env.PORT || 3000}`;
@@ -47,6 +48,25 @@ export class AuthController {
         });
       }
 
+      const now = new Date();
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: now },
+      }).catch(() => {});
+
+      await auditService.logEvent({
+        tenantId: user.tenantId,
+        userId: user.id,
+        userName: user.name,
+        userEmail: user.email,
+        userRole: user.role,
+        category: 'LOGIN',
+        action: 'USER_LOGIN',
+        actionTitle: 'Acesso e Login no Sistema',
+        details: `Login realizado e acesso autenticado no sistema pelo usuário ${user.name || user.email}`,
+        ipAddress: request.ip,
+      });
+
       const secret = process.env.JWT_SECRET || 'quota-default-jwt-secret';
 
       const token = jwt.sign(
@@ -72,6 +92,7 @@ export class AuthController {
           name: user.name,
           email: user.email,
           plan: userPlan,
+          lastLoginAt: now,
           tenant: { id: user.tenantId, plan: userPlan, name: user.tenant?.name }
         }
       });
@@ -166,6 +187,25 @@ export class AuthController {
       if (!user) {
         return reply.redirect(`${frontendUrl}/login?error=user_not_found`);
       }
+
+      const now = new Date();
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: now },
+      }).catch(() => {});
+
+      await auditService.logEvent({
+        tenantId: user.tenantId,
+        userId: user.id,
+        userName: user.name,
+        userEmail: user.email,
+        userRole: user.role,
+        category: 'LOGIN',
+        action: 'USER_LOGIN',
+        actionTitle: 'Acesso e Login no Sistema (Google)',
+        details: `Login efetuado via conta Google pelo usuário ${user.name || user.email}`,
+        ipAddress: request.ip,
+      });
 
       const token = jwt.sign(
         { id: user.id, role: user.role, tenantId: user.tenantId },

@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma';
 import crypto from 'crypto';
 import { SUPPORTED_PROVIDERS, type SupportedProvider } from '../lib/providers';
 import type { AuthenticatedRequest } from '../types/auth';
+import auditService from '../service/audit.service';
 
 export class TenantController {
   
@@ -44,7 +45,7 @@ export class TenantController {
         details: error instanceof Error ? error.message : error
       });
     }
-  }  async generateApiKey(request: AuthenticatedRequest, reply: FastifyReply) {
+  }  async generateApiKey(request: AuthenticatedRequest, reply: FastifyReply) {
     try {
       const actor = request.user;
       const body = (request.body as any) || {};
@@ -113,6 +114,19 @@ export class TenantController {
           providerCredentialId: credential.id,
           allowedModels,
         }
+      });
+
+      await auditService.logEvent({
+        tenantId: resolvedTenantId,
+        userId: actor?.id,
+        userName: actor?.name,
+        userEmail: actor?.email,
+        userRole: actor?.role,
+        category: 'CREDENTIALS',
+        action: 'API_KEY_CREATE',
+        actionTitle: `Chave de API "${apiKey.name}" Gerada`,
+        details: `Nova chave de API corporativa "${apiKey.name}" gerada para o provedor ${credential.provider.toUpperCase()}`,
+        metadata: { apiKeyId: apiKey.id, name: apiKey.name, provider: credential.provider }
       });
 
       return reply.status(201).send({
@@ -209,6 +223,19 @@ export class TenantController {
         }
       });
 
+      await auditService.logEvent({
+        tenantId: resolvedTenantId,
+        userId: actor?.id,
+        userName: actor?.name,
+        userEmail: actor?.email,
+        userRole: actor?.role,
+        category: 'CREDENTIALS',
+        action: 'CREDENTIAL_UPDATE',
+        actionTitle: `Credencial de IA (${provider.toUpperCase()}) Atualizada`,
+        details: `Credenciais e chave de API do provedor ${provider.toUpperCase()} salvas no cofre seguro.`,
+        metadata: { provider: credential.provider, credentialId: credential.id }
+      });
+
       return reply.status(201).send({
         message: 'Provider credential criada com sucesso',
         credential: {
@@ -285,6 +312,19 @@ export class TenantController {
         where: { id },
       });
 
+      await auditService.logEvent({
+        tenantId: credential.tenantId,
+        userId: actor?.id,
+        userName: actor?.name,
+        userEmail: actor?.email,
+        userRole: actor?.role,
+        category: 'CREDENTIALS',
+        action: 'CREDENTIAL_DELETE',
+        actionTitle: `Credencial de IA (${credential.provider.toUpperCase()}) Excluída`,
+        details: `Credencial do provedor ${credential.provider.toUpperCase()} removida`,
+        metadata: { provider: credential.provider, credentialId: credential.id }
+      });
+
       return reply.status(200).send({ message: 'Credencial excluída com sucesso' });
     } catch (error) {
       request.log.error(error);
@@ -317,10 +357,66 @@ export class TenantController {
         where: { id },
       });
 
+      await auditService.logEvent({
+        tenantId: apiKey.tenantId,
+        userId: actor?.id,
+        userName: actor?.name,
+        userEmail: actor?.email,
+        userRole: actor?.role,
+        category: 'CREDENTIALS',
+        action: 'API_KEY_DELETE',
+        actionTitle: `Chave de API "${apiKey.name}" Revogada`,
+        details: `Chave de API corporativa "${apiKey.name}" excluída`,
+        metadata: { apiKeyId: apiKey.id, name: apiKey.name }
+      });
+
       return reply.status(200).send({ message: 'Chave de API excluída com sucesso' });
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ error: 'Erro ao excluir chave de API' });
+    }
+  }
+
+  async updatePlan(request: AuthenticatedRequest, reply: FastifyReply) {
+    try {
+      const actor = request.user;
+      if (!actor) return reply.status(401).send({ error: 'Unauthorized' });
+
+      const { tenantId } = (request.params as any) || {};
+      const { plan } = (request.body as any) || {};
+
+      const targetTenantId = tenantId || actor.tenantId;
+
+      if (actor.role !== 'ADMIN' && actor.tenantId !== targetTenantId) {
+        return reply.status(403).send({ error: 'Sem permissão para este tenant' });
+      }
+
+      if (!plan || !['STARTER', 'PRO', 'ENTERPRISE'].includes(plan)) {
+        return reply.status(400).send({ error: 'Plano inválido (STARTER, PRO, ENTERPRISE)' });
+      }
+
+      const updated = await prisma.tenant.update({
+        where: { id: targetTenantId },
+        data: { plan }
+      });
+
+      await auditService.logEvent({
+        tenantId: targetTenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'PLAN_CHANGE',
+        action: 'PLAN_UPDATE',
+        actionTitle: `Mudança de Plano (${plan})`,
+        details: `Plano da organização alterado para ${plan}`,
+        metadata: { plan }
+      });
+
+      return reply.status(200).send({ message: 'Plano atualizado com sucesso', tenant: updated });
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Erro ao atualizar plano' });
     }
   }
 }

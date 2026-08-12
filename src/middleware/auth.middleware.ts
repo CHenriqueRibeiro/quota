@@ -115,42 +115,32 @@ export const authenticate = async (
 
 
     const user = await prisma.user.findUnique({
-
-      where:{
+      where: {
         id: decoded.id
       },
-
-      select:{
-        id:true,
-        role:true,
-        tenantId:true,
-        scopeId:true
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        tenantId: true,
+        scopeId: true
       }
-
     });
 
-
-
-    if(!user){
-
+    if (!user) {
       return reply.status(401).send({
-        error:'User not found'
+        error: 'User not found'
       });
-
     }
 
-
-
     request.user = {
-
-      id:user.id,
-
-      role:user.role,
-
-      tenantId:user.tenantId,
-
-      scopeId:user.scopeId ?? undefined
-
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      tenantId: user.tenantId,
+      scopeId: user.scopeId ?? undefined
     };
 
 

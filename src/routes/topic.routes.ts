@@ -55,6 +55,22 @@ export async function topicRoutes(
 
   app.get(
 
+    "/topics/assistant/:assistantId",
+
+    {
+      preHandler:[
+        authenticate
+      ]
+    },
+
+    controller.listByAssistant.bind(
+      controller
+    )
+
+  );
+
+  app.get(
+
     "/topics/defaults",
 
     {

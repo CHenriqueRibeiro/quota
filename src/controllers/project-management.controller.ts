@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { prisma } from "../lib/prisma";
 import type { AuthenticatedRequest } from "../types/auth";
 import { getPlanLimits } from "../config/plan-limits";
+import auditService from "../service/audit.service";
 
 export class ProjectManagementController {
 
@@ -80,13 +81,25 @@ export class ProjectManagementController {
         });
       }
 
-
       const project = await (prisma as any).project.create({
         data: {
           tenantId,
           name: normalizedName,
           description: description?.trim() || null
         }
+      });
+
+      await auditService.logEvent({
+        tenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'METADATA',
+        action: 'PROJECT_CREATE',
+        actionTitle: `Projeto "${project.name}" Criado`,
+        details: `Projeto de metadados "${project.name}" cadastrado com sucesso`,
+        metadata: { projectId: project.id, name: project.name }
       });
 
       return reply.status(201).send(project);
@@ -122,6 +135,19 @@ export class ProjectManagementController {
 
       await (prisma as any).project.delete({
         where: { id: existing.id }
+      });
+
+      await auditService.logEvent({
+        tenantId: existing.tenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'METADATA',
+        action: 'PROJECT_DELETE',
+        actionTitle: `Projeto "${existing.name}" Excluído`,
+        details: `Projeto de metadados "${existing.name}" foi removido`,
+        metadata: { projectId: existing.id, name: existing.name }
       });
 
       return reply.status(200).send({ message: "Projeto excluído com sucesso" });

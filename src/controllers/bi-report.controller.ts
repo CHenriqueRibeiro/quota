@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { AuthenticatedRequest } from '../types/auth';
 import { BIReportService } from '../service/analytics/bi-report.service';
+import auditService from '../service/audit.service';
 
 const reportService = new BIReportService();
 
@@ -68,6 +69,19 @@ export class BIReportController {
         customFields: body.customFields,
       });
 
+      await auditService.logEvent({
+        tenantId,
+        userId: request.user?.id,
+        userName: request.user?.name,
+        userEmail: request.user?.email,
+        userRole: request.user?.role,
+        category: 'BI_REPORTS',
+        action: 'BI_REPORT_SAVE',
+        actionTitle: `Dashboard BI "${savedReport.title}" Salvo`,
+        details: `Dashboard BI "${savedReport.title}" salvo/atualizado com sucesso`,
+        metadata: { reportId: savedReport.id, title: savedReport.title }
+      });
+
       return reply.status(200).send({ success: true, data: savedReport });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message || 'Erro ao salvar relatório BI.' });
@@ -82,7 +96,21 @@ export class BIReportController {
       }
 
       const { id } = request.params as { id: string };
+      const report = await reportService.getReportById(tenantId, id);
       await reportService.deleteReport(tenantId, id);
+
+      await auditService.logEvent({
+        tenantId,
+        userId: request.user?.id,
+        userName: request.user?.name,
+        userEmail: request.user?.email,
+        userRole: request.user?.role,
+        category: 'BI_REPORTS',
+        action: 'BI_REPORT_DELETE',
+        actionTitle: `Dashboard BI "${report?.title || id}" Excluído`,
+        details: `Dashboard BI "${report?.title || id}" foi excluído`,
+        metadata: { reportId: id }
+      });
 
       return reply.status(200).send({ success: true, message: 'Relatório BI excluído com sucesso.' });
     } catch (error: any) {
@@ -101,6 +129,20 @@ export class BIReportController {
       const body = request.body as { publicExpiresAt?: string | null; isPublic?: boolean };
 
       const updated = await reportService.shareReport(tenantId, id, body || {});
+
+      await auditService.logEvent({
+        tenantId,
+        userId: request.user?.id,
+        userName: request.user?.name,
+        userEmail: request.user?.email,
+        userRole: request.user?.role,
+        category: 'BI_REPORTS',
+        action: 'BI_SHARE_GENERATE',
+        actionTitle: `Link Público BI Gerado ("${updated.title}")`,
+        details: `Link público de compartilhamento gerado para o dashboard BI "${updated.title}"`,
+        metadata: { reportId: updated.id, shareToken: updated.shareToken, publicExpiresAt: updated.publicExpiresAt }
+      });
+
       return reply.status(200).send({ success: true, data: updated });
     } catch (error: any) {
       return reply.status(400).send({ success: false, message: error.message || 'Erro ao compartilhar relatório.' });
@@ -116,6 +158,19 @@ export class BIReportController {
 
       const { id } = request.params as { id: string };
       const updated = await reportService.revokeShare(tenantId, id);
+
+      await auditService.logEvent({
+        tenantId,
+        userId: request.user?.id,
+        userName: request.user?.name,
+        userEmail: request.user?.email,
+        userRole: request.user?.role,
+        category: 'BI_REPORTS',
+        action: 'BI_SHARE_REVOKE',
+        actionTitle: `Link Público BI Revogado ("${updated.title}")`,
+        details: `Acesso via link público revogado do dashboard BI "${updated.title}"`,
+        metadata: { reportId: updated.id }
+      });
 
       return reply.status(200).send({
         success: true,
@@ -146,6 +201,20 @@ export class BIReportController {
       };
 
       const updated = await reportService.updateSchedule(tenantId, id, body);
+
+      await auditService.logEvent({
+        tenantId,
+        userId: request.user?.id,
+        userName: request.user?.name,
+        userEmail: request.user?.email,
+        userRole: request.user?.role,
+        category: 'BI_REPORTS',
+        action: 'BI_SCHEDULE_UPDATE',
+        actionTitle: `Agendamento de E-mail BI (${updated.title}) Configurado`,
+        details: `Envio periódico por e-mail do dashboard BI "${updated.title}" ${updated.scheduleEnabled ? 'ativado' : 'desativado'}`,
+        metadata: { reportId: updated.id, scheduleEnabled: updated.scheduleEnabled, scheduleEmail: updated.scheduleEmail }
+      });
+
       return reply.status(200).send({ success: true, data: updated });
     } catch (error: any) {
       return reply.status(400).send({ success: false, message: error.message || 'Erro ao agendar envio por e-mail.' });

@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma";
 import type { AuthenticatedRequest } from "../types/auth";
 import reportsService from "../service/reports.service";
 import { getPlanLimits } from "../config/plan-limits";
+import auditService from "../service/audit.service";
 
 export class ReportsController {
 
@@ -210,6 +211,19 @@ export class ReportsController {
         include: { billingGroup: true }
       });
 
+      await auditService.logEvent({
+        tenantId,
+        userId: actor?.id,
+        userName: actor?.name,
+        userEmail: actor?.email,
+        userRole: actor?.role,
+        category: 'SCHEDULES_EXPORTS',
+        action: 'SCHEDULE_CREATE',
+        actionTitle: `Agendamento "${schedule.name}" Criado`,
+        details: `Agendamento de relatório "${schedule.name}" (${schedule.frequency} às ${schedule.time}) para ${schedule.email}`,
+        metadata: { scheduleId: schedule.id, name: schedule.name, frequency: schedule.frequency, email: schedule.email }
+      });
+
       return reply.status(201).send(schedule);
     } catch (error) {
       request.log.error(error);
@@ -272,6 +286,19 @@ export class ReportsController {
         include: { billingGroup: true }
       });
 
+      await auditService.logEvent({
+        tenantId: existing.tenantId,
+        userId: actor?.id,
+        userName: actor?.name,
+        userEmail: actor?.email,
+        userRole: actor?.role,
+        category: 'SCHEDULES_EXPORTS',
+        action: 'SCHEDULE_UPDATE',
+        actionTitle: `Agendamento "${updated.name}" Alterado`,
+        details: `Configuração do agendamento "${updated.name}" atualizada (Frequência: ${updated.frequency}, Horário: ${updated.time})`,
+        metadata: { scheduleId: updated.id, name: updated.name, enabled: updated.enabled }
+      });
+
       return reply.status(200).send(updated);
     } catch (error) {
       request.log.error(error);
@@ -285,7 +312,24 @@ export class ReportsController {
       if (!actor) return reply.status(401).send({ error: "Unauthorized" });
 
       const { id } = (request.params as any) || {};
+      const existing = await prisma.reportSchedule.findUnique({ where: { id } });
       await prisma.reportSchedule.delete({ where: { id } });
+
+      if (existing) {
+        await auditService.logEvent({
+          tenantId: existing.tenantId,
+          userId: actor?.id,
+          userName: actor?.name,
+          userEmail: actor?.email,
+          userRole: actor?.role,
+          category: 'SCHEDULES_EXPORTS',
+          action: 'SCHEDULE_DELETE',
+          actionTitle: `Agendamento "${existing.name}" Removido`,
+          details: `Agendamento de relatório "${existing.name}" foi excluído`,
+          metadata: { scheduleId: existing.id, name: existing.name }
+        });
+      }
+
       return reply.status(200).send({ message: "Agendamento excluído com sucesso" });
     } catch (error) {
       request.log.error(error);

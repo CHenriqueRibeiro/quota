@@ -91,16 +91,18 @@ enum Plan {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
+  id           String    @id @default(uuid())
+  email        String    @unique
   passwordHash String
   name         String
-  role         Role     @default(ANALYST)
+  role         Role      @default(ANALYST)
   tenantId     String
-  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdAt    DateTime @default(now())
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt @default(now())
+  lastLoginAt  DateTime?
   scopeId      String?
-  scope        Scope?   @relation(fields: [scopeId], references: [id], onDelete: SetNull)
+  scope        Scope?    @relation(fields: [scopeId], references: [id], onDelete: SetNull)
 
   @@map("users")
 }
@@ -136,6 +138,7 @@ model Tenant {
   agents              Agent[]
   reportSchedules     ReportSchedule[]
   biReports           BiReport[]
+  auditLogs           AuditLog[]
 
   @@map("tenants")
 }
@@ -777,4 +780,31 @@ model BiReport {
   @@index([shareToken])
   @@map("bi_reports")
 }
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId      String?
+  userName    String?
+  userEmail   String?
+  userRole    String?
+  category    String
+  action      String
+  actionTitle String
+  details     String   @db.Text
+  metadata    Json?
+  ipAddress   String?
+  status      String   @default("SUCCESS")
+  level       String   @default("INFO")
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([category])
+  @@index([userEmail])
+  @@index([createdAt])
+  @@index([level])
+  @@map("audit_logs")
+}
+
 

@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma";
 
 import type { AuthenticatedRequest } from "../types/auth";
 import ScopeService from "../service/scope.service";
+import auditService from "../service/audit.service";
 
 
 
@@ -100,6 +101,19 @@ console.log("USER:", request.user);
       agents,
       providers,
       models
+    });
+
+    await auditService.logEvent({
+      tenantId,
+      userId: actor.id,
+      userName: actor.name,
+      userEmail: actor.email,
+      userRole: actor.role,
+      category: 'METADATA',
+      action: 'SCOPE_CREATE',
+      actionTitle: `Escopo (Scope) "${scope.name}" Criado`,
+      details: `Novo escopo de acesso "${scope.name}" (${scope.mode}) criado`,
+      metadata: { scopeId: scope.id, name: scope.name, mode: scope.mode }
     });
 
     return reply.status(201).send(scope);
@@ -275,16 +289,24 @@ const scope =
         body
       );
 
-
+      await auditService.logEvent({
+        tenantId: actor.tenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'METADATA',
+        action: 'SCOPE_UPDATE',
+        actionTitle: `Escopo (Scope) "${scope.name}" Atualizado`,
+        details: `Configurações do escopo de acesso "${scope.name}" atualizadas`,
+        metadata: { scopeId: scope.id, name: scope.name }
+      });
 
       return reply.send(scope);
-
-
 
     }catch(error){
 
       request.log.error(error);
-
 
       return reply.status(400).send({
         error:"Erro ao atualizar Scope.",
@@ -294,13 +316,6 @@ const scope =
 
   }
 
-
-
-
-
-
-
-
   async delete(
     request: AuthenticatedRequest,
     reply: FastifyReply
@@ -308,40 +323,37 @@ const scope =
 
     try{
 
-
       const {
         id,
-
       } = request.params as ScopeParams;
 
+      const actor = request.user;
+      if(!actor){
+        return reply.status(401).send({ error:"Unauthorized" });
+      }
 
-const actor = request.user;
+      await ScopeService.delete(actor.tenantId, id);
 
-
-if(!actor){
-
- return reply.status(401).send({
-  error:"Unauthorized"
- });
-
-}
-     await ScopeService.delete(
- actor.tenantId,
- id
-);
-
-
+      await auditService.logEvent({
+        tenantId: actor.tenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'METADATA',
+        action: 'SCOPE_DELETE',
+        actionTitle: `Escopo (Scope) Excluído`,
+        details: `Escopo de acesso removido da organização`,
+        metadata: { scopeId: id }
+      });
 
       return reply.send({
         success:true,
       });
 
-
-
     }catch(error){
 
       request.log.error(error);
-
 
       return reply.status(400).send({
         error:"Erro ao remover Scope.",
@@ -350,14 +362,6 @@ if(!actor){
     }
 
   }
-
-
-
-
-
-
-
-
 
   async assignUser(
     request: AuthenticatedRequest,
@@ -391,6 +395,19 @@ if(!actor){
         userId,
         scopeId
       );
+
+      await auditService.logEvent({
+        tenantId: actor.tenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'USERS_SETTINGS',
+        action: 'USER_SCOPE_ASSIGN',
+        actionTitle: `Escopo Atribuído ao Usuário "${user.name || user.email}"`,
+        details: `Escopo de acesso vinculado ao usuário ${user.email}`,
+        metadata: { targetUserId: user.id, scopeId: user.scopeId }
+      });
 
       return reply.send(user);
     } catch (error: any) {

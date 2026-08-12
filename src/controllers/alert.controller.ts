@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma";
 import { processAlerts } from "../service/alert-engine.service";
 import { triggerAlert } from "../service/alert.service";
 import { getPlanLimits } from "../config/plan-limits";
+import auditService from "../service/audit.service";
 
 
 class AlertController {
@@ -100,6 +101,19 @@ class AlertController {
           budgetId: body.budgetId || null,
           thresholdType: body.thresholdType || "PERCENTAGE"
         }
+      });
+
+      await auditService.logEvent({
+        tenantId: targetTenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'ALERTS',
+        action: 'ALERT_CREATE',
+        actionTitle: `Regra de Alerta (${type}) Criada`,
+        details: `Alerta para o tipo ${type} (${period}) configurado com limite de ${threshold} para ${email}`,
+        metadata: { alertId: alert.id, type: alert.type, period: alert.period, threshold: alert.threshold, email: alert.email }
       });
 
       return reply.status(201).send({
@@ -329,6 +343,19 @@ class AlertController {
         data: dataToUpdate
       });
 
+      await auditService.logEvent({
+        tenantId: existing.tenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'ALERTS',
+        action: 'ALERT_UPDATE',
+        actionTitle: `Regra de Alerta ("${updated.type}") Atualizada`,
+        details: `Configurações do alerta de ${updated.type} atualizadas`,
+        metadata: { alertId: updated.id, type: updated.type, enabled: updated.enabled }
+      });
+
       return reply.send({
         message: "Alerta atualizado com sucesso",
         alert: {
@@ -372,6 +399,19 @@ class AlertController {
 
       await prisma.alertConfig.delete({
         where: { id }
+      });
+
+      await auditService.logEvent({
+        tenantId: existing.tenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'ALERTS',
+        action: 'ALERT_DELETE',
+        actionTitle: `Regra de Alerta (${existing.type}) Removida`,
+        details: `Regra de alerta de ${existing.type} removida`,
+        metadata: { alertId: existing.id }
       });
 
       return reply.send({ message: "Alerta excluído com sucesso" });

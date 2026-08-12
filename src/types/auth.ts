@@ -11,15 +11,12 @@ export type UserRole =
   | "DEV";
 
 export interface AuthenticatedUser {
-
   id: string;
-
+  name?: string;
+  email?: string;
   role: UserRole;
-
   tenantId: string;
-
   scopeId?: string;
-
 }export interface AuthenticatedUser {
 
   id: string;

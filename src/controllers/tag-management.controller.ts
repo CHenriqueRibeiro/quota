@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import type { AuthenticatedRequest } from "../types/auth";
+import auditService from "../service/audit.service";
 
 interface TagItem {
   id: string;
@@ -148,6 +149,19 @@ export class TagManagementController {
 
       tenantTagsMap.set(normalizedName, newTag);
 
+      await auditService.logEvent({
+        tenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'METADATA',
+        action: 'TAG_CREATE',
+        actionTitle: `Tag/Grupo "${normalizedName}" Criado`,
+        details: `Tag de metadados "${normalizedName}" criada`,
+        metadata: { tagName: normalizedName }
+      });
+
       try {
         const tag = await (prisma as any).tag.create({
           data: { tenantId, name: normalizedName }
@@ -200,6 +214,19 @@ export class TagManagementController {
       };
       tenantTagsMap.set(normalizedNewName, updatedTag);
 
+      await auditService.logEvent({
+        tenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'METADATA',
+        action: 'TAG_UPDATE',
+        actionTitle: `Tag "${normalizedNewName}" Atualizada`,
+        details: `Tag de metadados atualizada para "${normalizedNewName}"`,
+        metadata: { oldTag: id, newTag: normalizedNewName }
+      });
+
       try {
         const updated = await (prisma as any).tag.update({
           where: { id },
@@ -244,6 +271,19 @@ export class TagManagementController {
       } catch {
         // ignore
       }
+
+      await auditService.logEvent({
+        tenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'METADATA',
+        action: 'TAG_DELETE',
+        actionTitle: `Tag "${id}" Excluída`,
+        details: `Tag de metadados "${id}" foi removida`,
+        metadata: { tagId: id }
+      });
 
       return reply.status(200).send({ message: "Tag excluída com sucesso", id });
     } catch (error) {

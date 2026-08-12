@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { prisma } from '../lib/prisma';
 import type { AuthenticatedRequest } from '../types/auth';
 import { getPlanLimits } from '../config/plan-limits';
+import auditService from '../service/audit.service';
 
 export class BillingController {
 
@@ -53,8 +54,21 @@ export class BillingController {
     }
 
     try {
-
       const group = await prisma.billingGroup.create({ data: { tenantId, name } });
+
+      await auditService.logEvent({
+        tenantId,
+        userId: actor?.id,
+        userName: actor?.name,
+        userEmail: actor?.email,
+        userRole: actor?.role,
+        category: 'METADATA',
+        action: 'BILLING_GROUP_CREATE',
+        actionTitle: `Grupo de Faturamento "${group.name}" Criado`,
+        details: `Novo grupo de faturamento/equipe "${group.name}" cadastrado`,
+        metadata: { billingGroupId: group.id, name: group.name }
+      });
+
       return reply.status(201).send(group);
     } catch (err: any) {
       request.log.error({ err }, 'failed creating billing group');
@@ -100,6 +114,19 @@ export class BillingController {
 
       await prisma.billingGroup.delete({
         where: { id: group.id }
+      });
+
+      await auditService.logEvent({
+        tenantId: group.tenantId,
+        userId: actor?.id,
+        userName: actor?.name,
+        userEmail: actor?.email,
+        userRole: actor?.role,
+        category: 'METADATA',
+        action: 'BILLING_GROUP_DELETE',
+        actionTitle: `Grupo de Faturamento "${group.name}" Removido`,
+        details: `Grupo de faturamento "${group.name}" foi excluído`,
+        metadata: { billingGroupId: group.id, name: group.name }
       });
 
       return reply.status(200).send({ message: 'Billing group deleted successfully' });

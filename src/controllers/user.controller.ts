@@ -2,6 +2,7 @@ import type { FastifyReply } from 'fastify';
 import { prisma } from '../lib/prisma';
 import * as argon2 from 'argon2';
 import { getPlanLimits } from '../config/plan-limits';
+import auditService from '../service/audit.service';
 
 import type {
   AuthenticatedRequest,
@@ -249,6 +250,19 @@ export class UserController {
             scopeId: scopeId?.trim() || null
           }
         });
+
+      await auditService.logEvent({
+        tenantId: resolvedTenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'USERS_SETTINGS',
+        action: 'USER_CREATE',
+        actionTitle: `Usuário ${user.name} Criado`,
+        details: `Novo usuário ${user.email} (Perfil: ${user.role}) adicionado à organização`,
+        metadata: { createdUserId: user.id, email: user.email, role: user.role }
+      });
 
       return reply.status(201).send({
         message:'Usuário criado com sucesso',
@@ -610,6 +624,8 @@ export class UserController {
           tenantId: true,
           scopeId: true,
           createdAt: true,
+          updatedAt: true,
+          lastLoginAt: true,
           tenant: {
             select: {
               id: true,
@@ -727,6 +743,19 @@ export class UserController {
         },
       });
 
+      await auditService.logEvent({
+        tenantId: existingUser.tenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'USERS_SETTINGS',
+        action: 'USER_UPDATE',
+        actionTitle: `Usuário ${updatedUser.name} Atualizado`,
+        details: `Perfil do usuário ${updatedUser.email} (Perfil: ${updatedUser.role}) atualizado`,
+        metadata: { updatedUserId: updatedUser.id, email: updatedUser.email, role: updatedUser.role }
+      });
+
       return reply.status(200).send({
         message: 'Usuário atualizado com sucesso',
         user: updatedUser,
@@ -767,6 +796,19 @@ export class UserController {
 
       await prisma.user.delete({
         where: { id },
+      });
+
+      await auditService.logEvent({
+        tenantId: existingUser.tenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'USERS_SETTINGS',
+        action: 'USER_DELETE',
+        actionTitle: `Usuário ${existingUser.name} Removido`,
+        details: `Usuário ${existingUser.email} (Perfil: ${existingUser.role}) removido da organização`,
+        metadata: { deletedUserId: existingUser.id, email: existingUser.email }
       });
 
       return reply.status(200).send({ message: 'Usuário excluído com sucesso' });

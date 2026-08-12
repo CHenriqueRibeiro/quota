@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { prisma } from "../lib/prisma";
 import type { AuthenticatedRequest } from "../types/auth";
 import { getPlanLimits } from "../config/plan-limits";
+import auditService from "../service/audit.service";
 
 export class AgentManagementController {
 
@@ -80,13 +81,25 @@ export class AgentManagementController {
         });
       }
 
-
       const agent = await (prisma as any).agent.create({
         data: {
           tenantId,
           name: normalizedName,
           description: description?.trim() || null
         }
+      });
+
+      await auditService.logEvent({
+        tenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'METADATA',
+        action: 'AGENT_CREATE',
+        actionTitle: `Agente "${agent.name}" Criado`,
+        details: `Agente de metadados "${agent.name}" cadastrado`,
+        metadata: { agentId: agent.id, name: agent.name }
       });
 
       return reply.status(201).send(agent);
@@ -122,6 +135,19 @@ export class AgentManagementController {
 
       await (prisma as any).agent.delete({
         where: { id: existing.id }
+      });
+
+      await auditService.logEvent({
+        tenantId: existing.tenantId,
+        userId: actor.id,
+        userName: actor.name,
+        userEmail: actor.email,
+        userRole: actor.role,
+        category: 'METADATA',
+        action: 'AGENT_DELETE',
+        actionTitle: `Agente "${existing.name}" Excluído`,
+        details: `Agente de metadados "${existing.name}" foi removido`,
+        metadata: { agentId: existing.id, name: existing.name }
       });
 
       return reply.status(200).send({ message: "Agente excluído com sucesso" });

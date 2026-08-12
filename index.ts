@@ -29,6 +29,7 @@ import { tagManagementRoutes } from "./src/routes/tag-management.routes";
 import { budgetRoutes } from "./src/routes/budget.routes";
 import { llmPricingRoutes } from "./src/routes/llm-pricing.routes";
 import { reportsRoutes } from "./src/routes/reports.routes";
+import { auditRoutes } from "./src/routes/audit.routes";
 import llmPricingService from "./src/service/llm-pricing.service";
 import reportsService from "./src/service/reports.service";
 import pruningService from "./src/service/pruning.service";
@@ -95,6 +96,7 @@ const start = async () => {
     await server.register(budgetRoutes);
     await server.register(llmPricingRoutes);
     await server.register(reportsRoutes);
+    await server.register(auditRoutes);
 
     // Inicializa / Garante sincronização dos preços das LLMs (llm-prices.com) a cada 5 dias
     llmPricingService.ensureFreshPrices().catch((err) => {

@@ -237,7 +237,17 @@ export class BIReportService {
     return {
       status: 'VALID',
       report: {
-        ...report,
+        id: report.id,
+        title: report.title,
+        description: report.description,
+        tabsConfig: report.tabsConfig,
+        customFields: report.customFields,
+        publicExpiresAt: report.publicExpiresAt,
+        createdAt: report.createdAt,
+        updatedAt: report.updatedAt,
+        tenant: {
+          name: report.tenant?.name || 'Empresa',
+        },
         usageLogs,
       },
     };

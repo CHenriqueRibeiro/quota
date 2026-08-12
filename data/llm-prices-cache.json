@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-07T02:33:01.834Z",
-  "lastSyncTimestamp": 1786069981834,
-  "nextSyncDueDate": "2026-08-12T02:33:01.834Z",
-  "totalModels": 383,
+  "updatedAt": "2026-08-12T02:36:32.996Z",
+  "lastSyncTimestamp": 1786502192996,
+  "nextSyncDueDate": "2026-08-17T02:36:32.996Z",
+  "totalModels": 387,
   "supportedVendors": [
     "ai21",
     "aion-labs",
@@ -64,7 +64,93 @@
     "~x-ai"
   ],
   "modelsByProvider": {
+    "nvidia": [
+      {
+        "id": "nvidia/nemotron-3.5-lightning",
+        "name": "NVIDIA: Nemotron 3.5 Lightning",
+        "input": 0.09999999999999999,
+        "output": 0.25,
+        "input_cached": 0.049999999999999996,
+        "supports_temperature": true
+      },
+      {
+        "id": "nvidia/nemotron-3-ultra-550b-a55b",
+        "name": "NVIDIA: Nemotron 3 Ultra",
+        "input": 0.6,
+        "output": 3.5999999999999996,
+        "input_cached": 0.19999999999999998,
+        "supports_temperature": true
+      },
+      {
+        "id": "nvidia/nemotron-3-ultra-550b-a55b:batch",
+        "name": "NVIDIA: Nemotron 3 Ultra (batch)",
+        "input": 0.3,
+        "output": 1.7999999999999998,
+        "input_cached": 0.09999999999999999,
+        "supports_temperature": true
+      },
+      {
+        "id": "nvidia/nemotron-3-super-120b-a12b",
+        "name": "NVIDIA: Nemotron 3 Super",
+        "input": 0.08499999999999999,
+        "output": 0.39999999999999997,
+        "input_cached": null,
+        "supports_temperature": true
+      },
+      {
+        "id": "nvidia/nemotron-3-nano-30b-a3b",
+        "name": "NVIDIA: Nemotron 3 Nano 30B A3B",
+        "input": 0.049999999999999996,
+        "output": 0.19999999999999998,
+        "input_cached": 0.024999999999999998,
+        "supports_temperature": false
+      }
+    ],
+    "sakana": [
+      {
+        "id": "sakana/sakana-namazu",
+        "name": "Sakana: Sakana Namazu",
+        "input": 0.95,
+        "output": 4,
+        "input_cached": 0.15,
+        "supports_temperature": false
+      },
+      {
+        "id": "sakana/fugu-ultra",
+        "name": "Sakana: Fugu Ultra",
+        "input": 5,
+        "output": 30,
+        "input_cached": 0.5,
+        "supports_temperature": false
+      }
+    ],
+    "upstage": [
+      {
+        "id": "upstage/solar-pro4",
+        "name": "Upstage: Solar Pro 4",
+        "input": 0.03,
+        "output": 0.12,
+        "input_cached": 0.006,
+        "supports_temperature": true
+      },
+      {
+        "id": "upstage/solar-pro-3",
+        "name": "Upstage: Solar Pro 3",
+        "input": 0.15,
+        "output": 0.6,
+        "input_cached": 0.015,
+        "supports_temperature": false
+      }
+    ],
     "meta": [
+      {
+        "id": "meta/muse-glimmer-30b",
+        "name": "Meta: Muse Glimmer 30B",
+        "input": 0.35,
+        "output": 1.5,
+        "input_cached": 0.04,
+        "supports_temperature": true
+      },
       {
         "id": "meta/muse-spark-1.2",
         "name": "Meta: Muse Spark 1.2",
@@ -134,7 +220,7 @@
       {
         "id": "qwen/qwen3.6-35b-a3b",
         "name": "Qwen: Qwen3.6 35B A3B",
-        "input": 0.14,
+        "input": 0.15,
         "output": 1,
         "input_cached": 0.049999999999999996,
         "supports_temperature": true
@@ -214,9 +300,9 @@
       {
         "id": "qwen/qwen3.5-397b-a17b",
         "name": "Qwen: Qwen3.5 397B A17B",
-        "input": 0.39,
-        "output": 2.34,
-        "input_cached": null,
+        "input": 0.5,
+        "output": 3.5999999999999996,
+        "input_cached": 0.3,
         "supports_temperature": true
       },
       {
@@ -286,9 +372,9 @@
       {
         "id": "qwen/qwen3-vl-235b-a22b-instruct",
         "name": "Qwen: Qwen3 VL 235B A22B Instruct",
-        "input": 0.21,
-        "output": 1.9,
-        "input_cached": 0.09999999999999999,
+        "input": 0.26,
+        "output": 1.04,
+        "input_cached": null,
         "supports_temperature": true
       },
       {
@@ -359,7 +445,7 @@
         "id": "qwen/qwen3-coder-30b-a3b-instruct",
         "name": "Qwen: Qwen3 Coder 30B A3B Instruct",
         "input": 0.07,
-        "output": 0.27,
+        "output": 0.28,
         "input_cached": null,
         "supports_temperature": true
       },
@@ -414,8 +500,8 @@
       {
         "id": "qwen/qwen3-14b",
         "name": "Qwen: Qwen3 14B",
-        "input": 0.22749999999999998,
-        "output": 0.9099999999999999,
+        "input": 0.12,
+        "output": 0.24,
         "input_cached": null,
         "supports_temperature": true
       },
@@ -480,9 +566,9 @@
       {
         "id": "~deepseek/deepseek-v4-flash-latest",
         "name": "DeepSeek V4 Flash Latest",
-        "input": 0.09,
-        "output": 0.18,
-        "input_cached": 0.018,
+        "input": 0.072,
+        "output": 0.144,
+        "input_cached": 0.0144,
         "supports_temperature": true
       }
     ],
@@ -490,25 +576,25 @@
       {
         "id": "deepseek/deepseek-v4-flash-0731",
         "name": "DeepSeek: DeepSeek V4 Flash 0731",
-        "input": 0.09,
+        "input": 0.08,
         "output": 0.18,
-        "input_cached": 0.018,
+        "input_cached": 0.016,
         "supports_temperature": true
       },
       {
         "id": "deepseek/deepseek-v4-pro",
         "name": "DeepSeek: DeepSeek V4 Pro",
-        "input": 0.435,
-        "output": 0.87,
-        "input_cached": 0.003625,
+        "input": 0.63168,
+        "output": 1.26336,
+        "input_cached": 0.053298,
         "supports_temperature": true
       },
       {
         "id": "deepseek/deepseek-v4-flash",
         "name": "DeepSeek: DeepSeek V4 Flash 0423",
-        "input": 0.0882,
-        "output": 0.1764,
-        "input_cached": 0.01764,
+        "input": 0.14,
+        "output": 0.28,
+        "input_cached": 0.028,
         "supports_temperature": true
       },
       {
@@ -531,8 +617,8 @@
         "id": "deepseek/deepseek-v3.1-terminus",
         "name": "DeepSeek: DeepSeek V3.1 Terminus",
         "input": 0.27,
-        "output": 1,
-        "input_cached": 0.135,
+        "output": 0.95,
+        "input_cached": 0.13,
         "supports_temperature": false
       },
       {
@@ -584,11 +670,53 @@
         "supports_temperature": true
       }
     ],
+    "bytedance-seed": [
+      {
+        "id": "bytedance-seed/seed-2.0-code",
+        "name": "ByteDance Seed: Seed-2.0-Code",
+        "input": 0.5,
+        "output": 3,
+        "input_cached": null,
+        "supports_temperature": true
+      },
+      {
+        "id": "bytedance-seed/seed-2.0-lite",
+        "name": "ByteDance Seed: Seed-2.0-Lite",
+        "input": 0.25,
+        "output": 2,
+        "input_cached": null,
+        "supports_temperature": false
+      },
+      {
+        "id": "bytedance-seed/seed-2.0-mini",
+        "name": "ByteDance Seed: Seed-2.0-Mini",
+        "input": 0.09999999999999999,
+        "output": 0.39999999999999997,
+        "input_cached": null,
+        "supports_temperature": false
+      },
+      {
+        "id": "bytedance-seed/seed-1.6-flash",
+        "name": "ByteDance Seed: Seed 1.6 Flash",
+        "input": 0.075,
+        "output": 0.3,
+        "input_cached": null,
+        "supports_temperature": false
+      },
+      {
+        "id": "bytedance-seed/seed-1.6",
+        "name": "ByteDance Seed: Seed 1.6",
+        "input": 0.25,
+        "output": 2,
+        "input_cached": null,
+        "supports_temperature": false
+      }
+    ],
     "thinkingmachines": [
       {
         "id": "thinkingmachines/inkling-small",
         "name": "Thinking Machines: Inkling Small",
-        "input": 0.5,
+        "input": 0.44999999999999996,
         "output": 1.2,
         "input_cached": 0.09999999999999999,
         "supports_temperature": false
@@ -596,9 +724,9 @@
       {
         "id": "thinkingmachines/inkling",
         "name": "Thinking Machines: Inkling",
-        "input": 1,
+        "input": 0.95,
         "output": 4.05,
-        "input_cached": 0.16999999999999998,
+        "input_cached": 0.16,
         "supports_temperature": false
       },
       {
@@ -980,9 +1108,9 @@
       {
         "id": "google/gemma-4-26b-a4b-it",
         "name": "Google: Gemma 4 26B A4B ",
-        "input": 0.07,
-        "output": 0.33999999999999997,
-        "input_cached": null,
+        "input": 0.12,
+        "output": 0.39999999999999997,
+        "input_cached": 0.049999999999999996,
         "supports_temperature": true
       },
       {
@@ -1250,9 +1378,9 @@
       {
         "id": "moonshotai/kimi-k2.6",
         "name": "MoonshotAI: Kimi K2.6",
-        "input": 0.5700000000000001,
-        "output": 2.4,
-        "input_cached": 0.096,
+        "input": 0.95,
+        "output": 4,
+        "input_cached": 0.16,
         "supports_temperature": false
       },
       {
@@ -1524,14 +1652,6 @@
         "supports_temperature": false
       },
       {
-        "id": "openai/gpt-5.3-chat",
-        "name": "OpenAI: GPT-5.3 Chat",
-        "input": 1.75,
-        "output": 14,
-        "input_cached": 0.175,
-        "supports_temperature": false
-      },
-      {
         "id": "openai/gpt-5.3-codex",
         "name": "OpenAI: GPT-5.3-Codex",
         "input": 1.75,
@@ -1742,9 +1862,9 @@
       {
         "id": "openai/gpt-oss-120b",
         "name": "OpenAI: gpt-oss-120b",
-        "input": 0.037,
+        "input": 0.03,
         "output": 0.16999999999999998,
-        "input_cached": null,
+        "input_cached": 0.03,
         "supports_temperature": false
       },
       {
@@ -2198,23 +2318,13 @@
         "supports_temperature": true
       }
     ],
-    "sakana": [
-      {
-        "id": "sakana/fugu-ultra",
-        "name": "Sakana: Fugu Ultra",
-        "input": 5,
-        "output": 30,
-        "input_cached": 0.5,
-        "supports_temperature": false
-      }
-    ],
     "z-ai": [
       {
         "id": "z-ai/glm-5.2",
         "name": "Z.ai: GLM 5.2",
-        "input": 0.546,
-        "output": 1.716,
-        "input_cached": 0.10139999999999999,
+        "input": 0.42,
+        "output": 1.4,
+        "input_cached": 0.07,
         "supports_temperature": true
       },
       {
@@ -2228,9 +2338,9 @@
       {
         "id": "z-ai/glm-5.1",
         "name": "Z.ai: GLM 5.1",
-        "input": 0.952,
-        "output": 2.992,
-        "input_cached": 0.17679999999999998,
+        "input": 1.4,
+        "output": 4.4,
+        "input_cached": 0.26,
         "supports_temperature": true
       },
       {
@@ -2284,9 +2394,9 @@
       {
         "id": "z-ai/glm-4.6",
         "name": "Z.ai: GLM 4.6",
-        "input": 0.5,
-        "output": 2,
-        "input_cached": 0.09999999999999999,
+        "input": 0.55,
+        "output": 2.2,
+        "input_cached": 0.11,
         "supports_temperature": true
       },
       {
@@ -2348,40 +2458,6 @@
         "supports_temperature": false
       }
     ],
-    "nvidia": [
-      {
-        "id": "nvidia/nemotron-3-ultra-550b-a55b",
-        "name": "NVIDIA: Nemotron 3 Ultra",
-        "input": 0.6,
-        "output": 3.5999999999999996,
-        "input_cached": 0.19999999999999998,
-        "supports_temperature": true
-      },
-      {
-        "id": "nvidia/nemotron-3-ultra-550b-a55b:batch",
-        "name": "NVIDIA: Nemotron 3 Ultra (batch)",
-        "input": 0.3,
-        "output": 1.7999999999999998,
-        "input_cached": 0.09999999999999999,
-        "supports_temperature": true
-      },
-      {
-        "id": "nvidia/nemotron-3-super-120b-a12b",
-        "name": "NVIDIA: Nemotron 3 Super",
-        "input": 0.3,
-        "output": 0.8999999999999999,
-        "input_cached": null,
-        "supports_temperature": true
-      },
-      {
-        "id": "nvidia/nemotron-3-nano-30b-a3b",
-        "name": "NVIDIA: Nemotron 3 Nano 30B A3B",
-        "input": 0.049999999999999996,
-        "output": 0.19999999999999998,
-        "input_cached": 0.03,
-        "supports_temperature": false
-      }
-    ],
     "minimax": [
       {
         "id": "minimax/minimax-m3",
@@ -2402,9 +2478,9 @@
       {
         "id": "minimax/minimax-m2.7",
         "name": "MiniMax: MiniMax M2.7",
-        "input": 0.27,
-        "output": 1.08,
-        "input_cached": 0.054,
+        "input": 0.3,
+        "output": 1.2,
+        "input_cached": 0.06,
         "supports_temperature": true
       },
       {
@@ -2688,7 +2764,7 @@
       {
         "id": "~moonshotai/kimi-latest",
         "name": "MoonshotAI Kimi Latest",
-        "input": 2.9000000000000004,
+        "input": 2.8,
         "output": 14,
         "input_cached": 0.29,
         "supports_temperature": false
@@ -2748,40 +2824,6 @@
         "supports_temperature": false
       }
     ],
-    "bytedance-seed": [
-      {
-        "id": "bytedance-seed/seed-2.0-lite",
-        "name": "ByteDance Seed: Seed-2.0-Lite",
-        "input": 0.25,
-        "output": 2,
-        "input_cached": null,
-        "supports_temperature": false
-      },
-      {
-        "id": "bytedance-seed/seed-2.0-mini",
-        "name": "ByteDance Seed: Seed-2.0-Mini",
-        "input": 0.09999999999999999,
-        "output": 0.39999999999999997,
-        "input_cached": null,
-        "supports_temperature": false
-      },
-      {
-        "id": "bytedance-seed/seed-1.6-flash",
-        "name": "ByteDance Seed: Seed 1.6 Flash",
-        "input": 0.075,
-        "output": 0.3,
-        "input_cached": null,
-        "supports_temperature": false
-      },
-      {
-        "id": "bytedance-seed/seed-1.6",
-        "name": "ByteDance Seed: Seed 1.6",
-        "input": 0.25,
-        "output": 2,
-        "input_cached": null,
-        "supports_temperature": false
-      }
-    ],
     "inception": [
       {
         "id": "inception/mercury-2",
@@ -2790,16 +2832,6 @@
         "output": 0.75,
         "input_cached": 0.024999999999999998,
         "supports_temperature": true
-      }
-    ],
-    "upstage": [
-      {
-        "id": "upstage/solar-pro-3",
-        "name": "Upstage: Solar Pro 3",
-        "input": 0.15,
-        "output": 0.6,
-        "input_cached": 0.015,
-        "supports_temperature": false
       }
     ],
     "writer": [
@@ -3073,7 +3105,7 @@
         "id": "meta-llama/llama-4-maverick",
         "name": "Meta: Llama 4 Maverick",
         "input": 0.19999999999999998,
-        "output": 0.7999999999999999,
+        "output": 0.696,
         "input_cached": null,
         "supports_temperature": true
       },
@@ -3238,14 +3270,117 @@
       {
         "id": "gryphe/mythomax-l2-13b",
         "name": "MythoMax 13B",
-        "input": 0.08,
-        "output": 0.11,
+        "input": 0.06,
+        "output": 0.06,
         "input_cached": null,
         "supports_temperature": true
       }
     ]
   },
   "prices": [
+    {
+      "id": "nvidia/nemotron-3.5-lightning",
+      "vendor": "nvidia",
+      "name": "NVIDIA: Nemotron 3.5 Lightning",
+      "input": 0.09999999999999999,
+      "output": 0.25,
+      "input_cached": 0.049999999999999996,
+      "input_cache_write": null,
+      "supports_temperature": true,
+      "supported_parameters": [
+        "frequency_penalty",
+        "include_reasoning",
+        "logit_bias",
+        "logprobs",
+        "max_tokens",
+        "min_p",
+        "presence_penalty",
+        "reasoning",
+        "repetition_penalty",
+        "response_format",
+        "seed",
+        "stop",
+        "structured_outputs",
+        "temperature",
+        "top_k",
+        "top_logprobs",
+        "top_p"
+      ]
+    },
+    {
+      "id": "sakana/sakana-namazu",
+      "vendor": "sakana",
+      "name": "Sakana: Sakana Namazu",
+      "input": 0.95,
+      "output": 4,
+      "input_cached": 0.15,
+      "input_cache_write": null,
+      "supports_temperature": false,
+      "supported_parameters": [
+        "include_reasoning",
+        "reasoning",
+        "reasoning_effort",
+        "structured_outputs",
+        "tool_choice",
+        "tools",
+        "web_search_options"
+      ]
+    },
+    {
+      "id": "upstage/solar-pro4",
+      "vendor": "upstage",
+      "name": "Upstage: Solar Pro 4",
+      "input": 0.03,
+      "output": 0.12,
+      "input_cached": 0.006,
+      "input_cache_write": null,
+      "supports_temperature": true,
+      "supported_parameters": [
+        "frequency_penalty",
+        "include_reasoning",
+        "max_tokens",
+        "presence_penalty",
+        "reasoning",
+        "response_format",
+        "structured_outputs",
+        "temperature",
+        "tool_choice",
+        "tools",
+        "top_p"
+      ]
+    },
+    {
+      "id": "meta/muse-glimmer-30b",
+      "vendor": "meta",
+      "name": "Meta: Muse Glimmer 30B",
+      "input": 0.35,
+      "output": 1.5,
+      "input_cached": 0.04,
+      "input_cache_write": null,
+      "supports_temperature": true,
+      "supported_parameters": [
+        "frequency_penalty",
+        "include_reasoning",
+        "logit_bias",
+        "logprobs",
+        "max_tokens",
+        "min_p",
+        "presence_penalty",
+        "reasoning",
+        "reasoning_effort",
+        "repetition_penalty",
+        "response_format",
+        "seed",
+        "stop",
+        "structured_outputs",
+        "temperature",
+        "tool_choice",
+        "tools",
+        "top_k",
+        "top_logprobs",
+        "top_p"
+      ]
+    },
     {
       "id": "meta/muse-spark-1.2",
       "vendor": "meta",
@@ -3303,9 +3438,9 @@
       "id": "~deepseek/deepseek-v4-flash-latest",
       "vendor": "~deepseek",
       "name": "DeepSeek V4 Flash Latest",
-      "input": 0.09,
-      "output": 0.18,
-      "input_cached": 0.018,
+      "input": 0.072,
+      "output": 0.144,
+      "input_cached": 0.0144,
       "input_cache_write": null,
       "supports_temperature": true,
       "supported_parameters": [
@@ -3315,6 +3450,7 @@
         "logprobs",
         "max_tokens",
         "min_p",
+        "parallel_tool_calls",
         "presence_penalty",
         "reasoning",
         "reasoning_effort",
@@ -3336,9 +3472,9 @@
       "id": "deepseek/deepseek-v4-flash-0731",
       "vendor": "deepseek",
       "name": "DeepSeek: DeepSeek V4 Flash 0731",
-      "input": 0.09,
+      "input": 0.08,
       "output": 0.18,
-      "input_cached": 0.018,
+      "input_cached": 0.016,
       "input_cache_write": null,
       "supports_temperature": true,
       "supported_parameters": [
@@ -3348,6 +3484,7 @@
         "logprobs",
         "max_tokens",
         "min_p",
+        "parallel_tool_calls",
         "presence_penalty",
         "reasoning",
         "reasoning_effort",
@@ -3366,10 +3503,34 @@
       ]
     },
     {
+      "id": "bytedance-seed/seed-2.0-code",
+      "vendor": "bytedance-seed",
+      "name": "ByteDance Seed: Seed-2.0-Code",
+      "input": 0.5,
+      "output": 3,
+      "input_cached": null,
+      "input_cache_write": null,
+      "supports_temperature": true,
+      "supported_parameters": [
+        "frequency_penalty",
+        "include_reasoning",
+        "max_tokens",
+        "reasoning",
+        "reasoning_effort",
+        "response_format",
+        "stop",
+        "structured_outputs",
+        "temperature",
+        "tool_choice",
+        "tools",
+        "top_p"
+      ]
+    },
+    {
       "id": "thinkingmachines/inkling-small",
       "vendor": "thinkingmachines",
       "name": "Thinking Machines: Inkling Small",
-      "input": 0.5,
+      "input": 0.44999999999999996,
       "output": 1.2,
       "input_cached": 0.09999999999999999,
       "input_cache_write": null,
@@ -3387,6 +3548,7 @@
         "repetition_penalty",
         "seed",
         "stop",
+        "structured_outputs",
         "temperature",
         "tool_choice",
         "tools",
@@ -3657,9 +3819,9 @@
       "id": "thinkingmachines/inkling",
       "vendor": "thinkingmachines",
       "name": "Thinking Machines: Inkling",
-      "input": 1,
+      "input": 0.95,
       "output": 4.05,
-      "input_cached": 0.16999999999999998,
+      "input_cached": 0.16,
       "input_cache_write": null,
       "supports_temperature": false,
       "supported_parameters": [
@@ -4407,9 +4569,9 @@
       "id": "z-ai/glm-5.2",
       "vendor": "z-ai",
       "name": "Z.ai: GLM 5.2",
-      "input": 0.546,
-      "output": 1.716,
-      "input_cached": 0.10139999999999999,
+      "input": 0.42,
+      "output": 1.4,
+      "input_cached": 0.07,
       "input_cache_write": null,
       "supports_temperature": true,
       "supported_parameters": [
@@ -5267,7 +5429,7 @@
       "id": "~moonshotai/kimi-latest",
       "vendor": "~moonshotai",
       "name": "MoonshotAI Kimi Latest",
-      "input": 2.9000000000000004,
+      "input": 2.8,
       "output": 14,
       "input_cached": 0.29,
       "input_cache_write": null,
@@ -5424,7 +5586,7 @@
       "id": "qwen/qwen3.6-35b-a3b",
       "vendor": "qwen",
       "name": "Qwen: Qwen3.6 35B A3B",
-      "input": 0.14,
+      "input": 0.15,
       "output": 1,
       "input_cached": 0.049999999999999996,
       "input_cache_write": null,
@@ -5599,9 +5761,9 @@
       "id": "deepseek/deepseek-v4-pro",
       "vendor": "deepseek",
       "name": "DeepSeek: DeepSeek V4 Pro",
-      "input": 0.435,
-      "output": 0.87,
-      "input_cached": 0.003625,
+      "input": 0.63168,
+      "output": 1.26336,
+      "input_cached": 0.053298,
       "input_cache_write": null,
       "supports_temperature": true,
       "supported_parameters": [
@@ -5631,9 +5793,9 @@
       "id": "deepseek/deepseek-v4-flash",
       "vendor": "deepseek",
       "name": "DeepSeek: DeepSeek V4 Flash 0423",
-      "input": 0.0882,
-      "output": 0.1764,
-      "input_cached": 0.01764,
+      "input": 0.14,
+      "output": 0.28,
+      "input_cached": 0.028,
       "input_cache_write": null,
       "supports_temperature": true,
       "supported_parameters": [
@@ -5861,9 +6023,9 @@
       "id": "moonshotai/kimi-k2.6",
       "vendor": "moonshotai",
       "name": "MoonshotAI: Kimi K2.6",
-      "input": 0.5700000000000001,
-      "output": 2.4,
-      "input_cached": 0.096,
+      "input": 0.95,
+      "output": 4,
+      "input_cached": 0.16,
       "input_cache_write": null,
       "supports_temperature": false,
       "supported_parameters": [
@@ -5938,9 +6100,9 @@
       "id": "z-ai/glm-5.1",
       "vendor": "z-ai",
       "name": "Z.ai: GLM 5.1",
-      "input": 0.952,
-      "output": 2.992,
-      "input_cached": 0.17679999999999998,
+      "input": 1.4,
+      "output": 4.4,
+      "input_cached": 0.26,
       "input_cache_write": null,
       "supports_temperature": true,
       "supported_parameters": [
@@ -5969,9 +6131,9 @@
       "id": "google/gemma-4-26b-a4b-it",
       "vendor": "google",
       "name": "Google: Gemma 4 26B A4B ",
-      "input": 0.07,
-      "output": 0.33999999999999997,
-      "input_cached": null,
+      "input": 0.12,
+      "output": 0.39999999999999997,
+      "input_cached": 0.049999999999999996,
       "input_cache_write": null,
       "supports_temperature": true,
       "supported_parameters": [
@@ -6212,9 +6374,9 @@
       "id": "minimax/minimax-m2.7",
       "vendor": "minimax",
       "name": "MiniMax: MiniMax M2.7",
-      "input": 0.27,
-      "output": 1.08,
-      "input_cached": 0.054,
+      "input": 0.3,
+      "output": 1.2,
+      "input_cached": 0.06,
       "input_cache_write": null,
       "supports_temperature": true,
       "supported_parameters": [
@@ -6377,8 +6539,8 @@
       "id": "nvidia/nemotron-3-super-120b-a12b",
       "vendor": "nvidia",
       "name": "NVIDIA: Nemotron 3 Super",
-      "input": 0.3,
-      "output": 0.8999999999999999,
+      "input": 0.08499999999999999,
+      "output": 0.39999999999999997,
       "input_cached": null,
       "input_cache_write": null,
       "supports_temperature": true,
@@ -6564,25 +6726,6 @@
         "stop",
         "structured_outputs",
         "temperature",
-        "tool_choice",
-        "tools"
-      ]
-    },
-    {
-      "id": "openai/gpt-5.3-chat",
-      "vendor": "openai",
-      "name": "OpenAI: GPT-5.3 Chat",
-      "input": 1.75,
-      "output": 14,
-      "input_cached": 0.175,
-      "input_cache_write": null,
-      "supports_temperature": false,
-      "supported_parameters": [
-        "max_completion_tokens",
-        "max_tokens",
-        "response_format",
-        "seed",
-        "structured_outputs",
         "tool_choice",
         "tools"
       ]
@@ -6969,9 +7112,9 @@
       "id": "qwen/qwen3.5-397b-a17b",
       "vendor": "qwen",
       "name": "Qwen: Qwen3.5 397B A17B",
-      "input": 0.39,
-      "output": 2.34,
-      "input_cached": null,
+      "input": 0.5,
+      "output": 3.5999999999999996,
+      "input_cached": 0.3,
       "input_cache_write": null,
       "supports_temperature": true,
       "supported_parameters": [
@@ -7534,7 +7677,7 @@
       "name": "NVIDIA: Nemotron 3 Nano 30B A3B",
       "input": 0.049999999999999996,
       "output": 0.19999999999999998,
-      "input_cached": 0.03,
+      "input_cached": 0.024999999999999998,
       "input_cache_write": null,
       "supports_temperature": false,
       "supported_parameters": [
@@ -7570,7 +7713,6 @@
       "supports_temperature": false,
       "supported_parameters": [
         "max_completion_tokens",
-        "max_tokens",
         "response_format",
         "seed",
         "structured_outputs",
@@ -8562,9 +8704,9 @@
       "id": "z-ai/glm-4.6",
       "vendor": "z-ai",
       "name": "Z.ai: GLM 4.6",
-      "input": 0.5,
-      "output": 2,
-      "input_cached": 0.09999999999999999,
+      "input": 0.55,
+      "output": 2.2,
+      "input_cached": 0.11,
       "input_cache_write": null,
       "supports_temperature": true,
       "supported_parameters": [
@@ -8739,9 +8881,9 @@
       "id": "qwen/qwen3-vl-235b-a22b-instruct",
       "vendor": "qwen",
       "name": "Qwen: Qwen3 VL 235B A22B Instruct",
-      "input": 0.21,
-      "output": 1.9,
-      "input_cached": 0.09999999999999999,
+      "input": 0.26,
+      "output": 1.04,
+      "input_cached": null,
       "input_cache_write": null,
       "supports_temperature": true,
       "supported_parameters": [
@@ -8841,8 +8983,8 @@
       "vendor": "deepseek",
       "name": "DeepSeek: DeepSeek V3.1 Terminus",
       "input": 0.27,
-      "output": 1,
-      "input_cached": 0.135,
+      "output": 0.95,
+      "input_cached": 0.13,
       "input_cache_write": null,
       "supports_temperature": false,
       "supported_parameters": [
@@ -9329,9 +9471,9 @@
       "id": "openai/gpt-oss-120b",
       "vendor": "openai",
       "name": "OpenAI: gpt-oss-120b",
-      "input": 0.037,
+      "input": 0.03,
       "output": 0.16999999999999998,
-      "input_cached": null,
+      "input_cached": 0.03,
       "input_cache_write": null,
       "supports_temperature": false,
       "supported_parameters": [
@@ -9461,7 +9603,7 @@
       "vendor": "qwen",
       "name": "Qwen: Qwen3 Coder 30B A3B Instruct",
       "input": 0.07,
-      "output": 0.27,
+      "output": 0.28,
       "input_cached": null,
       "input_cache_write": null,
       "supports_temperature": true,
@@ -10293,8 +10435,8 @@
       "id": "qwen/qwen3-14b",
       "vendor": "qwen",
       "name": "Qwen: Qwen3 14B",
-      "input": 0.22749999999999998,
-      "output": 0.9099999999999999,
+      "input": 0.12,
+      "output": 0.24,
       "input_cached": null,
       "input_cache_write": null,
       "supports_temperature": true,
@@ -10626,7 +10768,7 @@
       "vendor": "meta-llama",
       "name": "Meta: Llama 4 Maverick",
       "input": 0.19999999999999998,
-      "output": 0.7999999999999999,
+      "output": 0.696,
       "input_cached": null,
       "input_cache_write": null,
       "supports_temperature": true,
@@ -12540,8 +12682,8 @@
       "id": "gryphe/mythomax-l2-13b",
       "vendor": "gryphe",
       "name": "MythoMax 13B",
-      "input": 0.08,
-      "output": 0.11,
+      "input": 0.06,
+      "output": 0.06,
       "input_cached": null,
       "input_cache_write": null,
       "supports_temperature": true,

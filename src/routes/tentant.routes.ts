@@ -78,4 +78,16 @@ export async function tenantRoutes(server: FastifyInstance) {
     { preHandler: [authenticate, authorize('MANAGER')] },
     tenantController.deleteApiKey
   );
+
+  server.patch(
+    '/tenants/plan',
+    { preHandler: [authenticate, authorize('ADMIN')] },
+    tenantController.updatePlan.bind(tenantController)
+  );
+
+  server.patch(
+    '/tenants/:tenantId/plan',
+    { preHandler: [authenticate, authorize('ADMIN')] },
+    tenantController.updatePlan.bind(tenantController)
+  );
 }

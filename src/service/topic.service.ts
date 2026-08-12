@@ -650,6 +650,36 @@ class TopicService {
 
   }
 
+  async listByAssistant(
+    user: AuthenticatedUser,
+    assistantId: string
+  ) {
+    const topics = await prisma.topic.findMany({
+      where: {
+        tenantId: user.tenantId,
+        assistantId,
+      },
+      include: {
+        assistant: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: [
+        {
+          sortOrder: "asc",
+        },
+        {
+          createdAt: "asc",
+        },
+      ],
+    });
+
+    return topics;
+  }
+
   async getById(
     user:AuthenticatedUser,
     id:string

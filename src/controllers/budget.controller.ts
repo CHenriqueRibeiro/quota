@@ -3,6 +3,7 @@ import { AlertPeriod, Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import type { AuthenticatedRequest } from "../types/auth";
 import { getPlanLimits } from "../config/plan-limits";
+import auditService from "../service/audit.service";
 
 
 function getPeriodDate(period: AlertPeriod): Date {
@@ -263,6 +264,19 @@ export class BudgetController {
         include: { billingGroup: true }
       });
 
+      await auditService.logEvent({
+        tenantId,
+        userId: actor?.id,
+        userName: actor?.name,
+        userEmail: actor?.email,
+        userRole: actor?.role,
+        category: 'BUDGET',
+        action: 'BUDGET_CREATE',
+        actionTitle: `Orçamento de R$ ${budget.limit.toFixed(2)} Criado`,
+        details: `Novo orçamento de R$ ${budget.limit.toFixed(2)} (${budget.period}) configurado${budget.autoBlock ? ' com auto-bloqueio' : ''}`,
+        metadata: { budgetId: budget.id, limit: budget.limit, period: budget.period, autoBlock: budget.autoBlock }
+      });
+
       return reply.status(201).send(budget);
     } catch (error) {
       request.log.error(error);
@@ -352,6 +366,19 @@ export class BudgetController {
         include: { billingGroup: true }
       });
 
+      await auditService.logEvent({
+        tenantId: existing.tenantId,
+        userId: actor?.id,
+        userName: actor?.name,
+        userEmail: actor?.email,
+        userRole: actor?.role,
+        category: 'BUDGET',
+        action: 'BUDGET_UPDATE',
+        actionTitle: `Orçamento Alterado (Limite: R$ ${updated.limit.toFixed(2)})`,
+        details: `Orçamento atualizado para limite de R$ ${updated.limit.toFixed(2)} (${updated.period})`,
+        metadata: { budgetId: updated.id, limit: updated.limit, period: updated.period }
+      });
+
       return reply.status(200).send(updated);
     } catch (error) {
       request.log.error(error);
@@ -385,6 +412,19 @@ export class BudgetController {
 
       await prisma.budget.delete({
         where: { id }
+      });
+
+      await auditService.logEvent({
+        tenantId: existing.tenantId,
+        userId: actor?.id,
+        userName: actor?.name,
+        userEmail: actor?.email,
+        userRole: actor?.role,
+        category: 'BUDGET',
+        action: 'BUDGET_DELETE',
+        actionTitle: `Orçamento Excluído`,
+        details: `Regra de orçamento de R$ ${existing.limit.toFixed(2)} removida`,
+        metadata: { budgetId: existing.id }
       });
 
       return reply.status(200).send({ message: "Orçamento excluído com sucesso" });
