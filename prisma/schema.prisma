@@ -103,6 +103,7 @@ model User {
   lastLoginAt  DateTime?
   scopeId      String?
   scope        Scope?    @relation(fields: [scopeId], references: [id], onDelete: SetNull)
+  cliKeys      CliKey[]
 
   @@map("users")
 }
@@ -139,6 +140,7 @@ model Tenant {
   reportSchedules     ReportSchedule[]
   biReports           BiReport[]
   auditLogs           AuditLog[]
+  cliKeys             CliKey[]
 
   @@map("tenants")
 }
@@ -805,6 +807,34 @@ model AuditLog {
   @@index([createdAt])
   @@index([level])
   @@map("audit_logs")
+}
+
+model CliKey {
+  id              String    @id @default(uuid())
+  key             String    @unique
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name            String    @default("default")
+  description     String?
+
+  agent           String?
+  project         String?
+  billingGroup    String?
+  environment     String?
+  tags            Json?
+
+  isActive        Boolean   @default(true)
+  lastUsedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([userId, name])
+  @@index([tenantId])
+  @@index([key])
+  @@map("cli_keys")
 }
 
 

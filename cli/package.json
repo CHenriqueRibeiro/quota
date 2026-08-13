@@ -1,0 +1,47 @@
+{
+  "name": "quota-cli",
+  "version": "0.1.3",
+  "description": "CLI oficial do Quota para monitoramento transparente de consumo de IA",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "quota": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "homepage": "https://github.com/CHenriqueRibeiro/quota/tree/main/cli#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CHenriqueRibeiro/quota.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CHenriqueRibeiro/quota/issues"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "quota",
+    "cli",
+    "telemetry",
+    "claude-code",
+    "codex",
+    "gemini",
+    "ai",
+    "tokens"
+  ],
+  "author": "Quota Dev Team",
+  "license": "MIT",
+  "dependencies": {
+    "chokidar": "^4.0.3",
+    "commander": "^13.1.0",
+    "open": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "typescript": "^5.7.3"
+  }
+}

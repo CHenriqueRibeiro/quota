@@ -10,6 +10,14 @@ export type UserRole =
   | "ANALYST"
   | "DEV";
 
+export interface CliKeyMeta {
+  agent?: string | null;
+  project?: string | null;
+  billingGroup?: string | null;
+  environment?: string | null;
+  tags?: string[] | null;
+}
+
 export interface AuthenticatedUser {
   id: string;
   name?: string;
@@ -17,17 +25,8 @@ export interface AuthenticatedUser {
   role: UserRole;
   tenantId: string;
   scopeId?: string;
-}export interface AuthenticatedUser {
-
-  id: string;
-
-  role: UserRole;
-
-  tenantId: string;
-
-  scopeId?: string;
-
 }
+
 export interface AuthenticatedApiKey {
   id: string;
   key: string;
@@ -44,4 +43,5 @@ export interface AuthenticatedRequest<
   user?: AuthenticatedUser;
   tenantId?: string;
   apiKey?: AuthenticatedApiKey;
-}
+  cliKeyMeta?: CliKeyMeta;
+}

@@ -30,6 +30,8 @@ import { budgetRoutes } from "./src/routes/budget.routes";
 import { llmPricingRoutes } from "./src/routes/llm-pricing.routes";
 import { reportsRoutes } from "./src/routes/reports.routes";
 import { auditRoutes } from "./src/routes/audit.routes";
+import { cliTelemetryRoutes } from "./src/routes/cli-telemetry.routes";
+import { cliKeyRoutes } from "./src/routes/cli-key.routes";
 import llmPricingService from "./src/service/llm-pricing.service";
 import reportsService from "./src/service/reports.service";
 import pruningService from "./src/service/pruning.service";
@@ -64,7 +66,7 @@ const start = async () => {
       origin: true,
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'x-system-secret'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'x-system-secret', 'x-api-key', 'x-cli-key'],
     });
 
     await server.register(multipart);
@@ -97,6 +99,8 @@ const start = async () => {
     await server.register(llmPricingRoutes);
     await server.register(reportsRoutes);
     await server.register(auditRoutes);
+    await server.register(cliTelemetryRoutes);
+    await server.register(cliKeyRoutes);
 
     // Inicializa / Garante sincronização dos preços das LLMs (llm-prices.com) a cada 5 dias
     llmPricingService.ensureFreshPrices().catch((err) => {

@@ -9,10 +9,9 @@ import llmPricingService from "../service/llm-pricing.service";
 const worker = new Worker(
   "usage",
   async (job) => {
-
-    console.dir(job.data, { depth: null });
-
     const data = job.data as any;
+    console.log(`\n📥 [Worker Usage] Novo job recebido ID: ${job.id} | Fonte: ${data.source || 'collector'}`);
+    console.dir(job.data, { depth: null });
 
     const requestId = data.requestId ?? `auto_${job.id}`;
     const tenantId = data.tenantId;
@@ -258,16 +257,15 @@ const worker = new Worker(
         statusCode: data.statusCode ?? null,
 
         latencyMs: data.latencyMs ?? null,
-
       },
-
     });
 
-
+    console.log(`✅ [Worker Usage] UsageLog gravado com sucesso! (ID: ${usage.id} | Model: ${provider}/${model} | Tokens In: ${promptTokens} | Tokens Out: ${completionTokens} | Custo: $${estimatedCost.toFixed(6)} USD)`);
 
     // ==============================
     // PROCESSAMENTO DE ALERTAS
     // ==============================
+
 
     try {
 
@@ -391,5 +389,7 @@ process.on("SIGINT", async () => {
 });
 
 
+
+console.log("⚡ Usage Worker iniciado e pronto para processar a fila 'usage'.");
 
 export default worker;
