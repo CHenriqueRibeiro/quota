@@ -280,6 +280,12 @@ model UsageLog {
   createdAt DateTime @default(now())
 
   @@index([tenantId])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, provider, createdAt])
+  @@index([tenantId, model, createdAt])
+  @@index([tenantId, project, createdAt])
+  @@index([tenantId, agent, createdAt])
+  @@index([tenantId, billingGroupId, createdAt])
   @@index([billingGroupId])
   @@index([createdAt])
   @@index([traceId])

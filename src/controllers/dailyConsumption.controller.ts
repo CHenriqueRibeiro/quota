@@ -1,7 +1,7 @@
-import type { FastifyReply } from "fastify";
-import { prisma } from "../lib/prisma";
+﻿import type { FastifyReply } from "fastify";
 import type { AuthenticatedRequest } from "../types/auth";
 import ScopeService from "../service/scope.service";
+import DashboardService from "../service/analytics/dashboard.service";
 
 type DailyConsumptionQuery = {
   startDate?: string;
@@ -30,148 +30,20 @@ export class DailyConsumptionController {
       const endDate = query.endDate ? new Date(query.endDate) : now;
 
       const where = await ScopeService.buildWhere(user, startDate, endDate);
-
-
-
-      const usage =
-        await prisma.usageLog.findMany({
-
-          where,
-
-          select:{
-            createdAt:true,
-            totalTokens:true,
-            estimatedCost:true
-          }
-
-        });
-
-
-
-      const dailyMap =
-        new Map<string, {
-
-          date:string;
-
-          requests:number;
-
-          tokens:number;
-
-          cost:number;
-
-        }>();
-
-
-
-      for(const item of usage){
-
-
-        const date =
-          item.createdAt
-          .toLocaleDateString(
-            "sv-SE",
-            {
-              timeZone:"America/Sao_Paulo"
-            }
-          );
-
-
-        const current =
-          dailyMap.get(date);
-
-
-
-        if(current){
-
-
-          current.requests += 1;
-
-
-          current.tokens +=
-            item.totalTokens ?? 0;
-
-
-          current.cost +=
-            Number(
-              item.estimatedCost ?? 0
-            );
-
-
-        }else{
-
-
-          dailyMap.set(
-
-            date,
-
-            {
-
-              date,
-
-              requests:1,
-
-              tokens:
-                item.totalTokens ?? 0,
-
-
-              cost:
-                Number(
-                  item.estimatedCost ?? 0
-                )
-
-            }
-
-          );
-
-        }
-
-      }
-
-
-
-      const dailyConsumption =
-        Array.from(
-          dailyMap.values()
-        )
-        .sort(
-          (a,b)=>
-            a.date.localeCompare(b.date)
-        );
-
-
+      const dailyConsumption = await DashboardService.getDailyConsumption(where);
 
       return reply.send({
-
         dailyConsumption,
-
-
-        period:{
-
+        period: {
           startDate,
-
           endDate
-
         }
-
       });
-
-
-
-    }catch(error){
-
-
-      console.error(error);
-
-
+    } catch (error) {
+      request.log.error(error);
       return reply.status(500).send({
-
-        message:
-          "Erro ao buscar consumo diário"
-
+        message: "Erro ao buscar consumo diário"
       });
-
     }
-
   }
-
 }

@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+﻿import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import type { AuthenticatedUser } from "../../types/auth";
 import scopeService from "../scope.service";
@@ -1483,117 +1483,62 @@ private async getBudgetSummary(
   where: Prisma.UsageLogWhereInput,
   user: AuthenticatedUser
 ){
+  const budgets = await prisma.budget.findMany({
+    where: { tenantId: user.tenantId },
+    include: { billingGroup: { select: { name: true } } },
+    orderBy: { createdAt: "asc" }
+  });
 
-  const budgets =
-    await prisma.budget.findMany({
-
-      where:{
-
-        tenantId:user.tenantId
-
-      },
-
-      include:{
-        billingGroup:true
-      },
-
-      orderBy:{
-
-        createdAt:"asc"
-
-      }
-
-    });
-
-
-
-  const summary = [];
-
-
-
-  for(const budget of budgets){
-
-
-    const budgetWhere: Prisma.UsageLogWhereInput = {
-
-      ...where
-
-    };
-
-
-
-    if (budget.billingGroupId) {
-      budgetWhere.billingGroupId = budget.billingGroupId;
-    }
-
-    if (budget.project) {
-      budgetWhere.project = budget.project;
-    }
-
-    if (budget.agent) {
-      budgetWhere.agent = budget.agent;
-    }
-
-    const usage = await prisma.usageLog.aggregate({
-      where: budgetWhere,
-      _sum: {
-        estimatedCost: true
-      },
-      _count: {
-        id: true
-      }
-    });
-
-    const used = usage._sum.estimatedCost ?? 0;
-    const requests = usage._count.id;
-    const limit = budget.limit;
-
-    let percent = 0;
-    if (limit > 0) {
-      percent = (used / limit) * 100;
-    }
-
-    let remaining = limit - used;
-    if (remaining < 0) {
-      remaining = 0;
-    }
-
-    const name = budget.project
-      ? `Projeto: ${budget.project}`
-      : budget.agent
-      ? `Agente: ${budget.agent}`
-      : (budget as any).billingGroup?.name
-      ? `Grupo: ${(budget as any).billingGroup.name}`
-      : "Orçamento Global";
-
-    summary.push({
-      id: budget.id,
-      name,
-      billingGroupId: budget.billingGroupId,
-      billingGroupName: (budget as any).billingGroup?.name ?? null,
-      project: budget.project,
-      agent: budget.agent,
-      period: budget.period,
-      requests,
-      used: Number(used.toFixed(used > 0 && used < 0.01 ? 4 : 2)),
-      limit: Number(limit.toFixed(2)),
-      remaining: Number(remaining.toFixed(used > 0 && used < 0.01 ? 4 : 2)),
-      percent: Number(percent.toFixed(percent > 0 && percent < 0.01 ? 4 : 2)),
-      status: this.getBudgetStatus(percent)
-    });
-
+  if (!budgets || budgets.length === 0) {
+    return [];
   }
 
+  const summary = await Promise.all(
+    budgets.map(async (budget) => {
+      const budgetWhere: Prisma.UsageLogWhereInput = { ...where };
+      if (budget.billingGroupId) budgetWhere.billingGroupId = budget.billingGroupId;
+      if (budget.project) budgetWhere.project = budget.project;
+      if (budget.agent) budgetWhere.agent = budget.agent;
 
+      const usage = await prisma.usageLog.aggregate({
+        where: budgetWhere,
+        _sum: { estimatedCost: true },
+        _count: { id: true }
+      });
 
-  return summary.sort(
+      const used = usage._sum.estimatedCost ?? 0;
+      const requests = usage._count.id;
+      const limit = budget.limit;
+      let percent = limit > 0 ? (used / limit) * 100 : 0;
+      let remaining = Math.max(0, limit - used);
 
-    (a,b)=>
+      const name = budget.project
+        ? `Projeto: ${budget.project}`
+        : budget.agent
+        ? `Agente: ${budget.agent}`
+        : (budget as any).billingGroup?.name
+        ? `Grupo: ${(budget as any).billingGroup.name}`
+        : "Orçamento Global";
 
-      b.percent - a.percent
-
+      return {
+        id: budget.id,
+        name,
+        billingGroupId: budget.billingGroupId,
+        billingGroupName: (budget as any).billingGroup?.name ?? null,
+        project: budget.project,
+        agent: budget.agent,
+        period: budget.period,
+        requests,
+        used: Number(used.toFixed(used > 0 && used < 0.01 ? 4 : 2)),
+        limit: Number(limit.toFixed(2)),
+        remaining: Number(remaining.toFixed(used > 0 && used < 0.01 ? 4 : 2)),
+        percent: Number(percent.toFixed(percent > 0 && percent < 0.01 ? 4 : 2)),
+        status: this.getBudgetStatus(percent)
+      };
+    })
   );
 
+  return summary.sort((a, b) => b.percent - a.percent);
 }
 
 private getBudgetStatus(

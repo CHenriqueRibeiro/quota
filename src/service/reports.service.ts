@@ -1,4 +1,4 @@
-import { prisma } from "../lib/prisma";
+﻿import { prisma } from "../lib/prisma";
 import { sendEmail } from "./email.service";
 import * as argon2 from "argon2";
 
@@ -142,8 +142,8 @@ export class ReportsService {
       throw new Error(`O limite máximo por importação é de ${MAX_USAGE_IMPORT} registros de consumo por lote. O arquivo enviado contém ${dataRowsCount} registros.`);
     }
 
-    let importedCount = 0;
     const errors: string[] = [];
+    const recordsToInsert: any[] = [];
 
     for (let i = 1; i < lines.length; i++) {
       const currentLine = lines[i];
@@ -154,34 +154,39 @@ export class ReportsService {
 
       try {
         // Formato esperado: Provider, Model, PromptTokens, CompletionTokens, EstimatedCost, [Project], [Agent]
-        const providerStr = (row[0] || "openai").toLowerCase();
-        const modelStr = row[1] || "gpt-4o";
-        const promptTokens = parseInt(row[2] || "0") || 0;
-        const completionTokens = parseInt(row[3] || "0") || 0;
-        const estimatedCost = parseFloat(row[4] || "0") || 0;
-        const projectStr = row[5] || null;
-        const agentStr = row[6] || null;
+        const providerStr = (row[0] || "openai").toLowerCase().replace(/[^a-z]/g, "");
+        const modelStr = (row[1] || "gpt-4o").slice(0, 100);
+        const promptTokens = Math.max(0, parseInt(row[2] || "0", 10) || 0);
+        const completionTokens = Math.max(0, parseInt(row[3] || "0", 10) || 0);
+        const estimatedCost = Math.max(0, parseFloat(row[4] || "0") || 0);
+        const projectStr = row[5] ? row[5].slice(0, 100) : null;
+        const agentStr = row[6] ? row[6].slice(0, 100) : null;
 
-        await prisma.usageLog.create({
-          data: {
-            tenantId,
-            provider: providerStr as any,
-            model: modelStr,
-            promptTokens,
-            completionTokens,
-            totalTokens: promptTokens + completionTokens,
-            estimatedCost,
-            project: projectStr,
-            agent: agentStr,
-            success: true,
-            latencyMs: 100,
-          }
+        recordsToInsert.push({
+          tenantId,
+          provider: providerStr as any,
+          model: modelStr,
+          promptTokens,
+          completionTokens,
+          totalTokens: promptTokens + completionTokens,
+          estimatedCost,
+          project: projectStr,
+          agent: agentStr,
+          success: true,
+          latencyMs: 100,
         });
-
-        importedCount++;
       } catch (err: any) {
         errors.push(`Linha ${i + 1}: ${err.message || 'Erro ao parsear linha'}`);
       }
+    }
+
+    let importedCount = 0;
+    if (recordsToInsert.length > 0) {
+      const batchResult = await prisma.usageLog.createMany({
+        data: recordsToInsert,
+        skipDuplicates: true,
+      });
+      importedCount = batchResult.count;
     }
 
     return { importedCount, errors };

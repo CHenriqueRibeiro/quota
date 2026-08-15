@@ -7,7 +7,11 @@
     "start": "bun index.ts",
     "worker": "bun src/workers/usage.worker.ts",
     "reports-worker": "bun src/workers/reports.worker.ts",
-    "dev": "bun --watch index.ts"
+    "dev": "bun --watch index.ts",
+    "test": "bun test src/tests/unit src/tests/bi_catalog_validation.test.ts",
+    "test:unit": "bun test src/tests/unit",
+    "test:e2e": "bun test src/tests/e2e/e2e_full.test.ts --timeout 60000",
+    "test:all": "bun test"
   },
   "devDependencies": {
     "@types/argon2": "^0.15.4",

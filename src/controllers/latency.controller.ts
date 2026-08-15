@@ -1,7 +1,7 @@
-import type { FastifyReply } from "fastify";
-import { prisma } from "../lib/prisma";
+﻿import type { FastifyReply } from "fastify";
 import type { AuthenticatedRequest } from "../types/auth";
 import ScopeService from "../service/scope.service";
+import DashboardService from "../service/analytics/dashboard.service";
 
 type LatencyQuery = {
   startDate?: string;
@@ -30,141 +30,20 @@ export class LatencyController {
       const endDate = query.endDate ? new Date(query.endDate) : now;
 
       const where = await ScopeService.buildWhere(user, startDate, endDate);
-
-
-
-      const latencyRaw =
-        await prisma.usageLog.findMany({
-
-          where,
-
-          select:{
-            latencyMs:true
-          }
-
-        });
-
-
-
-      const values =
-        latencyRaw
-        .map(item =>
-          item.latencyMs
-        )
-        .filter(
-          (value): value is number =>
-            value !== null
-        )
-        .sort(
-          (a,b)=>a-b
-        );
-
-
-
-
-      function percentile(
-        values:number[],
-        percent:number
-      ){
-
-        if(values.length === 0){
-          return 0;
-        }
-
-
-
-        const index =
-          Math.ceil(
-            (percent / 100) *
-            values.length
-          ) - 1;
-
-
-
-        return values[index] ?? 0;
-
-      }
-
-
-
-
-      const average =
-        values.length > 0
-          ?
-            Math.round(
-              values.reduce(
-                (acc,value)=>
-                  acc + value,
-                0
-              )
-              /
-              values.length
-            )
-          :
-            0;
-
-
-
+      const latencyData = await DashboardService.getLatency(where);
 
       return reply.send({
-
-
-        latency:{
-
-
-          average,
-
-
-          p50:
-            percentile(
-              values,
-              50
-            ),
-
-
-          p95:
-            percentile(
-              values,
-              95
-            ),
-
-
-          p99:
-            percentile(
-              values,
-              99
-            )
-
-        },
-
-
-        period:{
-
+        latency: latencyData,
+        period: {
           startDate,
-
           endDate
-
         }
-
       });
-
-
-
-    }catch(error){
-
-
-      console.error(error);
-
-
+    } catch (error) {
+      request.log.error(error);
       return reply.status(500).send({
-
-        message:
-          "Erro ao buscar latência"
-
+        message: "Erro ao buscar latência"
       });
-
     }
-
   }
-
 }

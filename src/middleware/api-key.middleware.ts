@@ -1,38 +1,70 @@
-import type { FastifyReply } from 'fastify';
+﻿import type { FastifyReply } from 'fastify';
 import { prisma } from '../lib/prisma';
+import { redis } from '../lib/redis';
 import type { AuthenticatedRequest } from '../types/auth';
 
 export const validateApiKey = async (
   request: AuthenticatedRequest,
   reply: FastifyReply
 ) => {
-  const apiKey = request.headers['x-api-key'];
+  const headerKey = request.headers['x-api-key'];
+  const authHeader = request.headers['authorization'];
+  const apiKey = typeof headerKey === 'string' && headerKey.trim() !== ''
+    ? headerKey
+    : typeof authHeader === 'string' && authHeader.toLowerCase().startsWith('bearer ')
+    ? authHeader.slice(7).trim()
+    : null;
 
-  if (typeof apiKey !== 'string' || apiKey.trim() === '') {
+  if (!apiKey) {
     return reply.status(401).send({
       error: 'API Key ausente ou inválida. Não foi possível gravar os dados de consumo.'
     });
   }
 
-  const keyRecord = await prisma.apiKey.findFirst({
-    where: {
-      key: apiKey,
-      isActive: true
-    },
-    select: {
-      id: true,
-      key: true,
-      name: true,
-      tenantId: true,
-      provider: true,
-      providerCredentialId: true,
-      allowedModels: true
+  const cleanKey = apiKey.trim();
+
+  // Verificação em cache Redis (TTL 5 min) para economizar consultas ao Postgres em alta taxa de requisições
+  const cacheKey = `apikey:cache:${cleanKey}`;
+  let keyRecord: any = null;
+
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      keyRecord = JSON.parse(cached);
     }
-  });
+  } catch {
+    // fallback para banco de dados caso Redis oscile
+  }
 
   if (!keyRecord) {
+    keyRecord = await prisma.apiKey.findUnique({
+      where: {
+        key: cleanKey,
+      },
+      select: {
+        id: true,
+        key: true,
+        name: true,
+        tenantId: true,
+        provider: true,
+        providerCredentialId: true,
+        allowedModels: true,
+        isActive: true,
+      },
+    });
+
+    if (keyRecord && keyRecord.isActive) {
+      try {
+        await redis.set(cacheKey, JSON.stringify(keyRecord), 'EX', 300);
+      } catch {
+        // silencia falha de cache
+      }
+    }
+  }
+
+  if (!keyRecord || !keyRecord.isActive) {
     return reply.status(401).send({
-      error: 'Chave de API não cadastrada ou inexistente no ambiente. Não foi possível gravar os dados de consumo.'
+      error: 'Chave de API não cadastrada, inativa ou inexistente no ambiente.'
     });
   }
 
@@ -45,6 +77,6 @@ export const validateApiKey = async (
     tenantId: keyRecord.tenantId,
     provider: keyRecord.provider,
     providerCredentialId: keyRecord.providerCredentialId,
-    allowedModels: keyRecord.allowedModels as string[] | null
+    allowedModels: keyRecord.allowedModels as string[] | null,
   };
 };
