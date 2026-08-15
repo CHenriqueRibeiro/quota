@@ -11,6 +11,7 @@ export interface PlanLimits {
   maxEnvironments: number;
   maxAssistants: number;
   maxWidgets: number;
+  maxCliKeys: number;
   maxTagsPerRequest: number;
   canScheduleReports: boolean;
   canExportReports: boolean;
@@ -32,6 +33,7 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     maxEnvironments: 2,
     maxAssistants: 1,
     maxWidgets: 1,
+    maxCliKeys: 5,
     maxTagsPerRequest: 10,
     canScheduleReports: false,
     canExportReports: false,
@@ -51,6 +53,7 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     maxEnvironments: 15,
     maxAssistants: 5,
     maxWidgets: 5,
+    maxCliKeys: 20,
     maxTagsPerRequest: 50,
     canScheduleReports: true,
     canExportReports: true,
@@ -70,6 +73,7 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     maxEnvironments: Infinity,
     maxAssistants: Infinity,
     maxWidgets: Infinity,
+    maxCliKeys: Infinity,
     maxTagsPerRequest: Infinity,
     canScheduleReports: true,
     canExportReports: true,

@@ -1,59 +1,63 @@
-# dependencies (bun install)
+# dependencies (bun / npm)
 node_modules
+**/node_modules
 
-# output
+# SDKs & external client packages (published on NPM / PyPI)
+sdks/
+sdks/python-cli/
+
+# Output & Build artifacts
 out
 dist
+**/dist
 *.tgz
+*.egg-info
+**/egg-info
+**/.eggs
+build
+**/build
 
-# code coverage
-coverage
-*.lcov
-
-# logs
-logs
-_.log
-report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
-
-# dotenv environment variable files
-.env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
-
-# caches
-.eslintcache
-.cache
-*.tsbuildinfo
-
-# IntelliJ based IDEs
-.idea
-
-# Finder (MacOS) folder config
-.DS_Store
-
-/generated/prisma
-
-# Python
+# Python virtualenvs & cache
 .venv
+**/.venv
 venv/
 ENV/
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
-*.egg-info/
-.eggs/
-dist/
-build/
 
-# Tests
+# Temporary scratch & build directories
+scratch/
+
+# Logs
+logs
+*.log
+debug-prisma.log
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Root temporary test scripts
 temp-test.ts
 temp-test*
+test-*.ts
 src/tests/
 *.test.ts
 *.test.js
 *.spec.ts
 *.spec.js
 
+# Dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
 
+# Caches & IDEs
+.eslintcache
+.cache
+*.tsbuildinfo
+.idea
+.DS_Store
+
+/generated/prisma

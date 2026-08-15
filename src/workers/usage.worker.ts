@@ -118,7 +118,7 @@ const worker = new Worker(
     const billingGroupId = await resolveBillingGroupId(tenantId, billingGroupName);
 
     // Insercao no banco de dados com campos tipados e higienizados
-    await prisma.usageLog.create({
+    const usage = await prisma.usageLog.create({
       data: {
         tenantId,
         billingGroupId,
@@ -209,5 +209,7 @@ process.on("SIGINT", async () => {
   await redis.quit();
   process.exit(0);
 });
+
+console.log("⚡ Usage Worker iniciado e pronto para processar a fila 'usage'.");
 
 export default worker;
