@@ -37,6 +37,15 @@ export type CreateScopeInput = {
 
 
 
+const VALID_PROVIDERS: ProviderName[] = ["openai", "anthropic", "google", "groq", "mistral"];
+
+function normalizeProviders(providers?: any[]): ProviderName[] {
+  if (!Array.isArray(providers)) return [];
+  return providers
+    .map((p) => String(p).toLowerCase().trim())
+    .filter((p): p is ProviderName => VALID_PROVIDERS.includes(p as ProviderName));
+}
+
 class ScopeService {
 
 
@@ -79,7 +88,7 @@ class ScopeService {
 
 
         providers:
-          data.providers ?? [],
+          normalizeProviders(data.providers),
 
 
         models:
@@ -173,13 +182,18 @@ class ScopeService {
     }
 
 
+    const dataToUpdate: any = { ...data };
+    if (data.providers !== undefined) {
+      dataToUpdate.providers = normalizeProviders(data.providers);
+    }
+
     return prisma.scope.update({
 
       where: {
         id
       },
 
-      data
+      data: dataToUpdate
 
     });
 
