@@ -22,11 +22,13 @@ export class BIQueryService {
     ];
 
     if (input.startDate) {
-      whereConditions.push(Prisma.sql`"createdAt" >= ${new Date(input.startDate)}`);
+      const startIso = new Date(input.startDate).toISOString();
+      whereConditions.push(Prisma.sql`"createdAt" >= ${startIso}::timestamp`);
     }
 
     if (input.endDate) {
-      whereConditions.push(Prisma.sql`"createdAt" <= ${new Date(input.endDate)}`);
+      const endIso = new Date(input.endDate).toISOString();
+      whereConditions.push(Prisma.sql`"createdAt" <= ${endIso}::timestamp`);
     }
 
     // Processar filtros dinâmicos whitelisted

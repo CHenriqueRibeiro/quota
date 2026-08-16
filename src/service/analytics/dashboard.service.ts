@@ -1,4 +1,4 @@
-﻿import { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { usageQueue } from "../../lib/queue";
 
@@ -11,10 +11,22 @@ export function buildUsageLogSqlWhere(where: Prisma.UsageLogWhereInput): Prisma.
 
   if (where.createdAt) {
     const c = where.createdAt as any;
-    if (c.gte) conditions.push(Prisma.sql`"createdAt" >= ${new Date(c.gte)}`);
-    if (c.gt) conditions.push(Prisma.sql`"createdAt" > ${new Date(c.gt)}`);
-    if (c.lte) conditions.push(Prisma.sql`"createdAt" <= ${new Date(c.lte)}`);
-    if (c.lt) conditions.push(Prisma.sql`"createdAt" < ${new Date(c.lt)}`);
+    if (c.gte) {
+      const gteIso = new Date(c.gte).toISOString();
+      conditions.push(Prisma.sql`"createdAt" >= ${gteIso}::timestamp`);
+    }
+    if (c.gt) {
+      const gtIso = new Date(c.gt).toISOString();
+      conditions.push(Prisma.sql`"createdAt" > ${gtIso}::timestamp`);
+    }
+    if (c.lte) {
+      const lteIso = new Date(c.lte).toISOString();
+      conditions.push(Prisma.sql`"createdAt" <= ${lteIso}::timestamp`);
+    }
+    if (c.lt) {
+      const ltIso = new Date(c.lt).toISOString();
+      conditions.push(Prisma.sql`"createdAt" < ${ltIso}::timestamp`);
+    }
   }
 
   if (where.provider) {
@@ -377,9 +389,10 @@ export default class DashboardService {
       }),
     ]);
 
+    const totalJobs = processedJobs + failedJobs;
     const errorRate =
-      processedJobs > 0
-        ? Number(((failedJobs / processedJobs) * 100).toFixed(2))
+      totalJobs > 0
+        ? Number(((failedJobs / totalJobs) * 100).toFixed(2))
         : 0;
 
     return {
