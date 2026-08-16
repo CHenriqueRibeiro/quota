@@ -1,0 +1,33 @@
+{
+  "name": "quota-sdk",
+  "version": "1.1.4",
+  "description": "SDK oficial do Quota para monitoramento, telemetria, proxy e interceptação MCP de IAs e LLMs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "quota",
+    "llm",
+    "ai",
+    "telemetry",
+    "mcp",
+    "modelcontextprotocol",
+    "openai",
+    "anthropic",
+    "gemini",
+    "groq",
+    "mistral"
+  ],
+  "author": "Quota",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

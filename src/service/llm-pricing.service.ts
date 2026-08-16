@@ -219,6 +219,112 @@ class LLMPricingService {
     return this.ensureFreshPrices();
   }
 
+  private findPriceItem(provider?: string, model?: string): { input: number; output: number; input_cached?: number | null } | null {
+    if (!model) return null;
+
+    const normalizedVendor = (provider || "").toLowerCase().trim();
+    const normalizedModel = model.toLowerCase().trim();
+    const pricesList = this.cache?.prices || [];
+
+    const isVendorMatch = (vA: string, vB: string) => {
+      const a = vA.replace(/[^a-z0-9]/g, '');
+      const b = vB.replace(/[^a-z0-9]/g, '');
+      if (!a || !b || a === b) return true;
+      if (a.includes('mistral') && b.includes('mistral')) return true;
+      if ((a === 'groq' && (b.includes('llama') || b.includes('meta') || b.includes('groq'))) || (b === 'groq' && (a.includes('llama') || a.includes('meta') || a.includes('groq')))) return true;
+      if (a.includes('anthropic') && b.includes('anthropic')) return true;
+      if (a.includes('google') && b.includes('google')) return true;
+      if (a.includes('openai') && b.includes('openai')) return true;
+      return false;
+    };
+
+    // 1. Correspondência exata pelo ID completo
+    let found = pricesList.find((p) => p.id.toLowerCase() === normalizedModel);
+
+    // 2. Correspondência pelo slug do modelo
+    if (!found) {
+      found = pricesList.find(
+        (p) => isVendorMatch(normalizedVendor, p.vendor) && extractModelSlug(p.id) === normalizedModel
+      );
+    }
+
+    // 3. Correspondência parcial por inclusão
+    if (!found) {
+      found = pricesList.find(
+        (p) =>
+          isVendorMatch(normalizedVendor, p.vendor) &&
+          (
+            p.id.toLowerCase().includes(normalizedModel) ||
+            normalizedModel.includes(extractModelSlug(p.id)) ||
+            p.name.toLowerCase().includes(normalizedModel)
+          )
+      );
+    }
+
+    // 4. Normalização avançada de chaves (remove datas, -latest, pontuação)
+    if (!found) {
+      const cleanM = normalizedModel.replace(/[-_.:/]/g, '').replace(/latest|instruct|versatile|preview|[0-9]{8}/g, '');
+      found = pricesList.find((p) => {
+        if (!isVendorMatch(normalizedVendor, p.vendor)) return false;
+        const pSlug = extractModelSlug(p.id).replace(/[-_.:/]/g, '').replace(/latest|instruct|versatile|preview|[0-9]{8}/g, '');
+        return pSlug.includes(cleanM) || cleanM.includes(pSlug);
+      });
+    }
+
+    if (found) {
+      return {
+        input: Number(found.input ?? 0),
+        output: Number(found.output ?? 0),
+        input_cached: found.input_cached
+      };
+    }
+
+    // 5. Tabela de Fallback Oficial dos 5 provedores
+    const FALLBACK_PRICES: Record<string, { input: number; output: number; input_cached?: number }> = {
+      // Anthropic
+      'claude-3-7-sonnet': { input: 3.0, output: 15.0, input_cached: 0.30 },
+      'claude-3-5-sonnet': { input: 3.0, output: 15.0, input_cached: 0.30 },
+      'claude-3-5-haiku': { input: 0.80, output: 4.0, input_cached: 0.08 },
+      'claude-3-haiku': { input: 0.25, output: 1.25, input_cached: 0.025 },
+      'claude-3-opus': { input: 15.0, output: 75.0, input_cached: 1.50 },
+      // Google Gemini
+      'gemini-2.0-flash': { input: 0.10, output: 0.40, input_cached: 0.025 },
+      'gemini-2.0-flash-lite': { input: 0.075, output: 0.30, input_cached: 0.01875 },
+      'gemini-1.5-flash': { input: 0.075, output: 0.30, input_cached: 0.01875 },
+      'gemini-1.5-pro': { input: 1.25, output: 5.0, input_cached: 0.3125 },
+      'gemini-2.0-pro': { input: 1.25, output: 5.0, input_cached: 0.3125 },
+      // Mistral
+      'mistral-large': { input: 2.0, output: 6.0 },
+      'mistral-small': { input: 0.20, output: 0.60 },
+      'codestral': { input: 0.30, output: 0.90 },
+      'ministral-8b': { input: 0.10, output: 0.10 },
+      'ministral-3b': { input: 0.04, output: 0.04 },
+      // Groq (LLaMA / Mixtral)
+      'llama-3.3-70b': { input: 0.59, output: 0.79 },
+      'llama-3.1-70b': { input: 0.59, output: 0.79 },
+      'llama-3.1-8b': { input: 0.05, output: 0.08 },
+      'llama3-70b': { input: 0.59, output: 0.79 },
+      'llama3-8b': { input: 0.05, output: 0.08 },
+      'mixtral-8x7b': { input: 0.24, output: 0.24 },
+      // OpenAI
+      'gpt-4o': { input: 2.50, output: 10.0, input_cached: 1.25 },
+      'gpt-4o-mini': { input: 0.15, output: 0.60, input_cached: 0.075 },
+      'o1': { input: 15.0, output: 60.0, input_cached: 7.50 },
+      'o1-mini': { input: 1.10, output: 4.40, input_cached: 0.55 },
+      'o3-mini': { input: 1.10, output: 4.40, input_cached: 0.55 }
+    };
+
+    for (const [key, val] of Object.entries(FALLBACK_PRICES)) {
+      const cleanKey = key.replace(/[-_.:/]/g, '');
+      const cleanM = normalizedModel.replace(/[-_.:/]/g, '');
+      if (cleanM.includes(cleanKey) || cleanKey.includes(cleanM)) {
+        return val;
+      }
+    }
+
+    return null;
+  }
+
   calculateCost(params: {
     provider?: string;
     model?: string;
@@ -230,44 +336,13 @@ class LLMPricingService {
 
     if (!model) return 0;
 
-    const normalizedVendor = (provider || "").toLowerCase().trim();
-    const normalizedModel = model.toLowerCase().trim();
+    const priceItem = this.findPriceItem(provider, model);
 
-    const pricesList = this.cache?.prices || [];
-
-    // 1. Correspondência exata pelo ID completo (ex: "anthropic/claude-sonnet-5")
-    let found = pricesList.find(
-      (p) => p.id.toLowerCase() === normalizedModel
-    );
-
-    // 2. Correspondência pelo slug do modelo sem o vendor (ex: "claude-sonnet-5")
-    if (!found) {
-      found = pricesList.find(
-        (p) =>
-          (normalizedVendor ? p.vendor.toLowerCase() === normalizedVendor : true) &&
-          extractModelSlug(p.id) === normalizedModel
-      );
-    }
-
-    // 3. Correspondência parcial por inclusão no ID ou no nome
-    if (!found) {
-      found = pricesList.find(
-        (p) =>
-          (normalizedVendor ? p.vendor.toLowerCase() === normalizedVendor : true) &&
-          (
-            p.id.toLowerCase().includes(normalizedModel) ||
-            normalizedModel.includes(extractModelSlug(p.id)) ||
-            p.name.toLowerCase().includes(normalizedModel)
-          )
-      );
-    }
-
-    if (found) {
-      const inputPricePerM = Number(found.input ?? 0);
-      const outputPricePerM = Number(found.output ?? 0);
-      // Para leitura de cache usa input_cached; se não disponível usa preço normal de input
-      const cacheReadPerM = found.input_cached !== null && found.input_cached !== undefined
-        ? Number(found.input_cached)
+    if (priceItem) {
+      const inputPricePerM = Number(priceItem.input ?? 0);
+      const outputPricePerM = Number(priceItem.output ?? 0);
+      const cacheReadPerM = priceItem.input_cached !== null && priceItem.input_cached !== undefined
+        ? Number(priceItem.input_cached)
         : inputPricePerM;
 
       const uncachedPrompt = Math.max(0, promptTokens - cachedTokens);
@@ -279,7 +354,7 @@ class LLMPricingService {
       return Number(totalCost.toFixed(6));
     }
 
-    // Modelo não cadastrado na tabela de preços — retorna 0 sem inventar valores
+    // Modelo desconhecido
     console.warn(
       `⚠️ Modelo não encontrado na tabela de preços: provider="${provider ?? ""}", model="${model}". ` +
       `Custo registrado como 0. Execute /llm-prices/sync para atualizar a tabela.`

@@ -2,10 +2,6 @@
 node_modules
 **/node_modules
 
-# SDKs & external client packages (published on NPM / PyPI)
-sdks/
-sdks/python-cli/
-
 # Output & Build artifacts
 out
 dist
