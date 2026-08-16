@@ -115,7 +115,7 @@ export class BudgetController {
         return reply.status(400).send({ error: "tenantId é obrigatório" });
       }
 
-      const { billingGroupId, project, agent } = query;
+      const { billingGroupId, billingGroup, project, agent } = query;
 
       const budgets = await prisma.budget.findMany({
         where: {
@@ -135,8 +135,12 @@ export class BudgetController {
       for (const budget of budgets) {
         let isApplicable = false;
 
-        if (budget.billingGroupId && billingGroupId && budget.billingGroupId === String(billingGroupId)) {
-          isApplicable = true;
+        if (budget.billingGroupId) {
+          if (billingGroupId && budget.billingGroupId === String(billingGroupId)) {
+            isApplicable = true;
+          } else if (billingGroup && budget.billingGroup?.name?.toLowerCase().trim() === String(billingGroup).toLowerCase().trim()) {
+            isApplicable = true;
+          }
         }
         if (budget.project && project && budget.project.toLowerCase().trim() === String(project).toLowerCase().trim()) {
           isApplicable = true;
