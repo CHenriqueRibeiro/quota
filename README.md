@@ -991,133 +991,151 @@ bun add quota-sdk
 yarn add quota-sdk
 ```
 
-##### ⚙️ Inicialização
+##### ⚡ Uso Rápido (1 Linha de Configuração)
+Basta inicializar o `Quota.init()` na entrada da sua aplicação (ex: `index.ts` ou `server.ts`):
+
 ```typescript
 import { Quota } from 'quota-sdk';
+import OpenAI from 'openai';
 
+// 1. Inicializa o monitoramento global do Quota
 Quota.init({
-  apiKey: 'quota_live_sua_chave_aqui',
-  endpoint: 'https://sua-api.com/collector', // Opcional (padrão: rota oficial)
-  project: 'portal-financeiro',              // Opcional: Agrupamento padrão
-  agent: 'assistente-cobranca',              // Opcional: Nome do robô/agente
-  environment: 'production',                 // Opcional: Ambiente
-  debug: false
+  apiKey: 'quota_live_sua_chave_de_api'
 });
-```
 
-> [!TIP]
-> Ao chamar `Quota.init()`, o SDK ativa automaticamente o monkey-patching em chamadas `fetch` para provedores de IA conhecidos (**OpenAI**, **Anthropic**, **Google Gemini**, **Groq**, **Mistral**, etc.). Seus metadados e contagens de tokens são enviados de forma 100% assíncrona ao `/collector` sem bloquear o fluxo da aplicação.
+// 2. Chamadas para OpenAI, Anthropic, Gemini, Groq ou Mistral são capturadas automaticamente!
+const openai = new OpenAI();
+
+async function main() {
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [{ role: 'user', content: 'Olá, mundo!' }]
+  });
+
+  console.log(completion.choices[0].message.content);
+}
+
+main();
+```
 
 ---
 
-#### 🧠 Integração Nativa com Model Context Protocol (MCP)
+##### 🤖 Exemplos de Uso por Provedor
 
-O SDK do Quota oferece suporte nativo de primeira classe para o padrão **Model Context Protocol (MCP)**, permitindo rastrear e auditar todas as chamadas de ferramentas (*Tool Calls*), mensagens e ações de agentes.
+###### 1. OpenAI SDK (`openai`)
+```typescript
+import { Quota } from 'quota-sdk';
+import OpenAI from 'openai';
 
-##### 🛠️ Opção A: Envelopando um Cliente MCP (`Quota.wrapMcp`)
-Se você usa o cliente oficial `@modelcontextprotocol/sdk`:
+Quota.init({ apiKey: 'quota_live_sua_chave' });
 
+const openai = new OpenAI();
+const res = await openai.chat.completions.create({
+  model: 'gpt-4o',
+  messages: [{ role: 'user', content: 'Resuma este texto.' }]
+});
+```
+
+###### 2. Anthropic SDK (`@anthropic-ai/sdk`)
+```typescript
+import { Quota } from 'quota-sdk';
+import Anthropic from '@anthropic-ai/sdk';
+
+Quota.init({ apiKey: 'quota_live_sua_chave' });
+
+const anthropic = new Anthropic();
+const res = await anthropic.messages.create({
+  model: 'claude-3-5-sonnet-20241022',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: 'Explique computação quântica.' }]
+});
+```
+
+###### 3. Google Gemini (`@google/generative-ai`)
+```typescript
+import { Quota } from 'quota-sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+Quota.init({ apiKey: 'quota_live_sua_chave' });
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+const result = await model.generateContent('Escreva um poema sobre IA.');
+```
+
+###### 4. Groq SDK (`groq-sdk`)
+```typescript
+import { Quota } from 'quota-sdk';
+import Groq from 'groq-sdk';
+
+Quota.init({ apiKey: 'quota_live_sua_chave' });
+
+const groq = new Groq();
+const res = await groq.chat.completions.create({
+  model: 'llama-3.3-70b-versatile',
+  messages: [{ role: 'user', content: 'Olá Groq!' }]
+});
+```
+
+###### 5. Mistral AI SDK (`@mistralai/mistralai`)
+```typescript
+import { Quota } from 'quota-sdk';
+import { Mistral } from '@mistralai/mistralai';
+
+Quota.init({ apiKey: 'quota_live_sua_chave' });
+
+const client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });
+const response = await client.chat.complete({
+  model: 'mistral-large-latest',
+  messages: [{ role: 'user', content: 'Olá Mistral!' }]
+});
+```
+
+---
+
+##### 🧠 Integração Nativa com Model Context Protocol (MCP)
+
+###### Opção A: Envelopando um Cliente MCP (`Quota.wrapMcp`)
 ```typescript
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { Quota } from 'quota-sdk';
 
-// 1. Cria a instância do cliente MCP
+Quota.init({
+  apiKey: 'quota_live_sua_chave',
+  project: 'automacao-vendas',
+  agent: 'agente-prospeccao'
+});
+
 const rawClient = new Client({ name: 'meu-agente', version: '1.0.0' });
 
-// 2. Envelopa o cliente com o Quota (1 linha)
+// Envelopa o cliente MCP em 1 única linha
 const mcpClient = Quota.wrapMcp(rawClient, {
-  project: 'automacao-vendas',
-  agent: 'agente-prospeccao',
   tags: ['mcp', 'tools', 'crm']
 });
 
-// 3. Chame as tools normalmente: o Quota intercepta tokens, latência e status!
+// Chame as tools normalmente: tokens, latência e status são interceptados automaticamente!
 const resultado = await mcpClient.callTool({
   name: 'consultar_lead_crm',
   arguments: { email: 'contato@empresa.com' }
 });
 ```
 
-##### ⚡ Opção B: Interceptador Funcional Direto (`Quota.interceptMcp`)
-Se você quer envelopar qualquer função ou ação de IA isolada:
-
+###### Opção B: Interceptador Funcional Direto (`Quota.interceptMcp`)
 ```typescript
 import { Quota } from 'quota-sdk';
 
 const resposta = await Quota.interceptMcp(
   async () => {
-    // Sua chamada para OpenAI, Anthropic, Gemini, Groq, Mistral ou MCP Tool
-    return await chamarMinhaIAOuFerramenta();
+    return await minhaFuncaoDeIAOuTool();
   },
   {
     provider: 'anthropic',
-    model: 'claude-3-5-sonnet-20241022',
-    tags: ['mcp-action', 'analise-juridica']
+    tags: ['mcp-action', 'juridico']
   }
 );
 ```
 
-##### 📊 Envio Manual de Telemetria (`Quota.trackUsage`)
-```typescript
-await Quota.trackUsage({
-  provider: 'google',
-  model: 'gemini-2.0-flash',
-  promptTokens: 120,
-  completionTokens: 40,
-  cachedTokens: 30,
-  reasoningTokens: 10,
-  latencyMs: 380,
-  statusCode: 200,
-  success: true,
-  metadata: {
-    project: 'assistente-bi',
-    agent: 'bot-relatorios',
-    tags: ['manual-tracking']
-  }
-});
-```
-
----
-
-#### 2. Python SDK (`quota-sdk`)
-
-##### 🚀 Instalação
-```bash
-pip install quota-sdk
-```
-
-##### ⚙️ Uso em Python com MCP
-```python
-from quota import Quota
-
-# 1. Inicializa o Quota
-Quota.init(
-    api_key="quota_live_sua_chave_aqui",
-    project="sistema-logistica",
-    agent="agente-rotas",
-    environment="production"
-)
-
-# 2. Envelopa qualquer cliente MCP em Python
-mcp_client = Quota.wrap_mcp(meu_mcp_client, tags=["mcp", "python-agent"])
-
-# 3. Executa as tools normalmente
-resultado = mcp_client.call_tool(name="calcular_frete", cep_origem="01001-000", cep_destino="20040-002")
-
-# Ou via interceptador funcional direto:
-resposta = Quota.intercept_mcp(
-    action=lambda: openai.chat.completions.create(model="gpt-4o-mini", messages=[...]),
-    provider="openai",
-    model="gpt-4o-mini"
-)
-```
-
----
-
-#### 🔌 Como Monitorar IDEs e Agentes Locais (Cursor, Claude Desktop, Windsurf, VS Code)
-
-Você pode monitorar ferramentas MCP executadas dentro de IDEs adicionando o wrapper do Quota no arquivo de configuração do cliente (ex: `claude_desktop_config.json` ou `~/.cursor/mcp.json`):
-
+###### Opção C: Monitorando MCP em IDEs (Cursor, Claude Desktop, Windsurf, VS Code)
 ```json
 {
   "mcpServers": {
@@ -1136,6 +1154,120 @@ Você pode monitorar ferramentas MCP executadas dentro de IDEs adicionando o wra
     }
   }
 }
+```
+
+---
+
+##### 🏷️ Passando Metadados de Observabilidade (Opcional)
+
+###### Opção A: Metadados Globais na Inicialização (Recomendado)
+```typescript
+import { Quota } from 'quota-sdk';
+
+Quota.init({
+  apiKey: 'quota_live_sua_chave',
+  project: 'portal-cliente',     // Projeto / Setor
+  agent: 'bot-suporte',          // Agente / Assistente
+  environment: 'production'      // Ambiente (production, staging, etc)
+});
+```
+
+###### Opção B: Metadados Dinâmicos por Requisição (via Cabeçalhos)
+```typescript
+const response = await openai.chat.completions.create(
+  {
+    model: 'gpt-4o',
+    messages: [{ role: 'user', content: 'Qual o meu saldo?' }]
+  },
+  {
+    headers: {
+      'x-quota-user-id': 'usr_991823',        // ID do usuário final
+      'x-quota-tags': 'vip,financeiro',        // Tags separadas por vírgula
+      'x-quota-billing-group': 'equipe-vendas' // Grupo de faturamento/equipe
+    }
+  }
+);
+```
+
+###### 📋 Parâmetros e Cabeçalhos Suportados:
+
+| Parâmetro no `Quota.init()` | Cabeçalho HTTP | Descrição & Caso de Uso |
+| :--- | :--- | :--- |
+| `project` | `x-quota-project` | Nome do Projeto ou Setor da empresa. |
+| `agent` | `x-quota-agent` | Nome do Agente ou Robô de IA. |
+| `environment` | `x-quota-environment` | Ambiente (`production`, `staging`, `development`). |
+| `externalUserId` | `x-quota-user-id` | ID do usuário final da sua aplicação. |
+| `requestGroup` | `x-quota-request-group` | Agrupamento de fluxo de execução. |
+| `billingGroup` | `x-quota-billing-group` | Grupo de faturamento, centro de custo ou equipe. |
+| `tags` | `x-quota-tags` | Lista ou string de tags separadas por vírgula (`tag1,tag2`). |
+| `traceId` | `x-quota-trace-id` | ID de rastreamento/tracing distribuído. |
+
+---
+
+##### 🛠️ Testes Locais (Desenvolvimento)
+```typescript
+Quota.init({
+  apiKey: 'quota_live_sua_chave_de_api',
+  endpoint: 'http://localhost:3000/collector' // Sobrescreve para ambiente local
+});
+```
+
+---
+
+##### 📊 Rastreamento Manual (`Quota.trackUsage`)
+```typescript
+import { Quota } from 'quota-sdk';
+
+Quota.init({ apiKey: 'quota_live_sua_chave' });
+
+await Quota.trackUsage({
+  provider: 'openai',
+  model: 'gpt-4o',
+  promptTokens: 120,
+  completionTokens: 40,
+  cachedTokens: 20,
+  reasoningTokens: 10,
+  latencyMs: 350,
+  statusCode: 200,
+  success: true,
+  metadata: {
+    project: 'meu-projeto',
+    agent: 'bot-cobranca',
+    externalUserId: 'user_123'
+  }
+});
+```
+
+---
+
+#### 2. Python SDK (`quota-sdk`)
+
+##### 🚀 Instalação
+```bash
+pip install quota-sdk
+```
+
+##### ⚙️ Uso em Python
+```python
+from quota import Quota
+
+Quota.init(
+    api_key="quota_live_sua_chave",
+    project="sistema-logistica",
+    agent="agente-rotas",
+    environment="production"
+)
+
+# Envelopamento MCP:
+mcp_client = Quota.wrap_mcp(meu_mcp_client, tags=["mcp", "tools"])
+resultado = mcp_client.call_tool(name="calcular_frete", cep="01001-000")
+
+# Interceptador funcional:
+resposta = Quota.intercept_mcp(
+    action=lambda: openai.chat.completions.create(model="gpt-4o", messages=[...]),
+    provider="openai",
+    model="gpt-4o"
+)
 ```
 
 ---

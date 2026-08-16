@@ -7,7 +7,7 @@ with open(os.path.join(this_directory, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="quota-sdk",
-    version="1.1.3",
+    version="1.1.4",
     description="Official Python SDK for Quota: LLM Telemetry, Proxy & MCP Interceptor",
     long_description=long_description,
     long_description_content_type="text/markdown",
