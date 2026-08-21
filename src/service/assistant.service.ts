@@ -50,154 +50,101 @@ class AssistantService {
     );
   }
 
-  if(!data.name.trim()){
-
-
+  if(!data.name?.trim()){
     throw new Error(
       "Nome é obrigatório."
     );
-
   }
 
-
-  if(!data.systemPrompt.trim()){
-
+  if(!data.systemPrompt?.trim()){
     throw new Error(
       "Prompt do sistema é obrigatório."
     );
-
   }
 
+  const cleanApiKeyId = typeof data.apiKeyId === 'string' && data.apiKeyId.trim() !== '' && data.apiKeyId !== 'none'
+    ? data.apiKeyId.trim()
+    : null;
 
-  if(!data.apiKeyId){
-
+  if(!cleanApiKeyId){
     throw new Error(
       "API Key é obrigatória."
     );
-
   }
 
+  const cleanScopeId = typeof data.scopeId === 'string' && data.scopeId.trim() !== '' && data.scopeId !== 'none'
+    ? data.scopeId.trim()
+    : null;
 
-  if(data.scopeId){
-
+  if(cleanScopeId){
     const scope =
       await prisma.scope.findFirst({
-
         where:{
-
-          id:data.scopeId,
-
-          tenantId:user.tenantId
-
+          id: cleanScopeId,
+          tenantId: user.tenantId
         }
-
       });
 
-
     if(!scope){
-
       throw new Error(
         "Scope não encontrado."
       );
-
     }
-
   }
-
 
   const apiKey =
     await prisma.apiKey.findFirst({
-
       where:{
-
-        id:data.apiKeyId,
-
-        tenantId:user.tenantId,
-
-        isActive:true
-
+        id: cleanApiKeyId,
+        tenantId: user.tenantId,
+        isActive: true
       }
-
     });
 
-
   if(!apiKey){
-
     throw new Error(
       "API Key não encontrada."
     );
-
   }
-
 
   if(data.isDefault){
-
     await prisma.assistant.updateMany({
-
       where:{
-
-        tenantId:user.tenantId,
-
-        isDefault:true
-
+        tenantId: user.tenantId,
+        isDefault: true
       },
-
       data:{
-
-        isDefault:false
-
+        isDefault: false
       }
-
     });
-
   }
-
 
   const assistant =
     await prisma.assistant.create({
-
       data:{
-
-        tenantId:user.tenantId,
-
-        scopeId:data.scopeId,
-
-        apiKeyId:data.apiKeyId,
-
-        name:data.name,
-
-        description:data.description,
-
-        type:data.type,
-
-        provider:apiKey.provider,
-
-        model:data.model,
-
-        systemPrompt:data.systemPrompt,
-
+        tenantId: user.tenantId,
+        scopeId: cleanScopeId,
+        apiKeyId: cleanApiKeyId,
+        name: data.name.trim(),
+        description: data.description?.trim() || null,
+        type: data.type || "CUSTOM",
+        provider: apiKey.provider,
+        model: data.model,
+        systemPrompt: data.systemPrompt,
         temperature:
-          data.temperature ?? 0.2,
-
+          data.temperature !== undefined && data.temperature !== null ? Number(data.temperature) : 0.2,
         maxTokens:
-          data.maxTokens ?? 4096,
-
+          data.maxTokens !== undefined && data.maxTokens !== null ? Number(data.maxTokens) : 4096,
         enabled:
           data.enabled ?? true,
-
         isDefault:
           data.isDefault ?? false,
-
         sortOrder:
           data.sortOrder ?? 0
-
       }
-
     });
 
-
   return assistant;
-
 }
 
   async list(
@@ -213,83 +160,51 @@ class AssistantService {
 
   const assistants =
     await prisma.assistant.findMany({
-
       where:{
         tenantId: user.tenantId,
         ...scopeWhere
       },
-
       select:{
-
-        id:true,
-
-        name:true,
-
-        description:true,
-
-        type:true,
-
-        provider:true,
-
-        model:true,
-
-        enabled:true,
-
-        isDefault:true,
-
-        sortOrder:true,
-
-        createdAt:true,
-
+        id: true,
+        name: true,
+        description: true,
+        type: true,
+        provider: true,
+        model: true,
+        systemPrompt: true,
+        temperature: true,
+        maxTokens: true,
+        enabled: true,
+        isDefault: true,
+        sortOrder: true,
+        createdAt: true,
+        scopeId: true,
+        apiKeyId: true,
         scope:{
-
           select:{
-
-            id:true,
-
-            name:true
-
+            id: true,
+            name: true
           }
-
         },
-
         apiKey:{
-
           select:{
-
-            id:true,
-
-            name:true,
-
-            provider:true
-
+            id: true,
+            name: true,
+            provider: true
           }
-
         }
-
       },
-
       orderBy:[
-
         {
-
-          sortOrder:"asc"
-
+          sortOrder: "asc"
         },
-
         {
-
-          createdAt:"asc"
-
+          createdAt: "asc"
         }
-
       ]
-
     });
 
-
   return assistants;
-
 }
 
   async listAvailableApiKeys(
@@ -422,151 +337,163 @@ class AssistantService {
   }
 
   async update(
-  user: AuthenticatedUser,
-  id: string,
-  data: Partial<CreateAssistantBody>
-){
-
-  const existing =
-    await prisma.assistant.findFirst({
-
-      where:{
-
-        id,
-
-        tenantId:user.tenantId
-
-      }
-
-    });
-
-
-  if(!existing){
-
-    throw new Error(
-      "Assistente não encontrado."
-    );
-
-  }
-
-
-  if(data.scopeId){
-
-    const scope =
-      await prisma.scope.findFirst({
-
+    user: AuthenticatedUser,
+    id: string,
+    data: any
+  ){
+    const existing =
+      await prisma.assistant.findFirst({
         where:{
-
-          id:data.scopeId,
-
-          tenantId:user.tenantId
-
+          id,
+          tenantId: user.tenantId
         }
-
       });
 
-
-    if(!scope){
-
+    if(!existing){
       throw new Error(
-        "Scope não encontrado."
+        "Assistente não encontrado."
       );
-
     }
 
-  }
+    const updateData: any = {};
 
-
-  let provider: ProviderName | undefined;
-
-
-  if(data.apiKeyId){
-
-    const apiKey =
-      await prisma.apiKey.findFirst({
-
-        where:{
-
-          id:data.apiKeyId,
-
-          tenantId:user.tenantId,
-
-          isActive:true
-
-        }
-
-      });
-
-
-    if(!apiKey){
-
-      throw new Error(
-        "API Key não encontrada."
-      );
-
+    if (data.name !== undefined && data.name !== null) {
+      const cleanName = String(data.name).trim();
+      if (!cleanName) throw new Error("Nome é obrigatório.");
+      updateData.name = cleanName;
     }
 
+    if (data.description !== undefined) {
+      updateData.description = data.description && String(data.description).trim() ? String(data.description).trim() : null;
+    }
 
-    provider =
-      apiKey.provider;
+    if (data.type !== undefined && data.type !== null) {
+      updateData.type = data.type;
+    }
 
-  }
+    if (data.model !== undefined && data.model !== null) {
+      const cleanModel = String(data.model).trim();
+      if (cleanModel) updateData.model = cleanModel;
+    }
 
+    if (data.systemPrompt !== undefined && data.systemPrompt !== null) {
+      const cleanPrompt = String(data.systemPrompt).trim();
+      if (!cleanPrompt) throw new Error("Prompt do sistema é obrigatório.");
+      updateData.systemPrompt = String(data.systemPrompt);
+    }
 
-  if(data.isDefault){
+    if (data.temperature !== undefined && data.temperature !== null && data.temperature !== '') {
+      updateData.temperature = Number(data.temperature);
+    }
 
-    await prisma.assistant.updateMany({
+    if (data.maxTokens !== undefined && data.maxTokens !== null && data.maxTokens !== '') {
+      updateData.maxTokens = Number(data.maxTokens);
+    }
 
-      where:{
+    if (data.enabled !== undefined && data.enabled !== null) {
+      updateData.enabled = Boolean(data.enabled);
+    }
 
-        tenantId:user.tenantId,
+    if (data.sortOrder !== undefined && data.sortOrder !== null) {
+      updateData.sortOrder = Number(data.sortOrder) || 0;
+    }
 
-        isDefault:true,
+    // Tratamento e Sanitização de Scope
+    if (data.scopeId !== undefined) {
+      const cleanScopeId = typeof data.scopeId === 'string' && data.scopeId.trim() !== '' && data.scopeId !== 'none'
+        ? data.scopeId.trim()
+        : null;
 
-        id:{
-          not:id
+      if (cleanScopeId) {
+        const scope = await prisma.scope.findFirst({
+          where: {
+            id: cleanScopeId,
+            tenantId: user.tenantId
+          }
+        });
+
+        if (!scope) {
+          throw new Error("Scope não encontrado.");
         }
-
-      },
-
-      data:{
-
-        isDefault:false
-
+        updateData.scopeId = cleanScopeId;
+      } else {
+        updateData.scopeId = null;
       }
+    }
 
-    });
+    // Tratamento e Sanitização de ApiKey & Provider
+    if (data.apiKeyId !== undefined) {
+      const cleanApiKeyId = typeof data.apiKeyId === 'string' && data.apiKeyId.trim() !== '' && data.apiKeyId !== 'none'
+        ? data.apiKeyId.trim()
+        : null;
 
-  }
+      if (cleanApiKeyId) {
+        const apiKey = await prisma.apiKey.findFirst({
+          where: {
+            id: cleanApiKeyId,
+            tenantId: user.tenantId,
+            isActive: true
+          }
+        });
 
+        if (!apiKey) {
+          throw new Error("API Key não encontrada.");
+        }
+        updateData.apiKeyId = cleanApiKeyId;
+        updateData.provider = apiKey.provider;
+      } else {
+        // Se explicitamente null ou vazio, não altera apiKey se for obrigatório ou desassocia se opcional
+        if (cleanApiKeyId === null && data.apiKeyId === null) {
+          updateData.apiKeyId = null;
+        }
+      }
+    }
 
-  const assistant =
-    await prisma.assistant.update({
+    if (data.provider && !updateData.provider) {
+      updateData.provider = data.provider;
+    }
 
-      where:{
+    if (data.isDefault) {
+      await prisma.assistant.updateMany({
+        where: {
+          tenantId: user.tenantId,
+          isDefault: true,
+          id: { not: id }
+        },
+        data: {
+          isDefault: false
+        }
+      });
+      updateData.isDefault = true;
+    } else if (data.isDefault === false) {
+      updateData.isDefault = false;
+    }
 
+    const assistant = await prisma.assistant.update({
+      where: {
         id
-
       },
-
-      data:{
-
-        ...data,
-
-        ...(provider && {
-
-          provider
-
-        })
-
+      data: updateData,
+      include: {
+        scope: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          }
+        },
+        apiKey: {
+          select: {
+            id: true,
+            name: true,
+            provider: true,
+          }
+        }
       }
-
     });
 
-
-  return assistant;
-
-}
+    return assistant;
+  }
 
   async delete(
     user: AuthenticatedUser,
