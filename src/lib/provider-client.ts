@@ -216,6 +216,31 @@ export async function callProvider(
   }
 
   /**
+   * Anthropic Claude requer max_tokens obrigatório e NÃO aceita role: 'system' no array messages.
+   * O system prompt deve ser enviado no parâmetro top-level `system`.
+   */
+  if (provider === 'anthropic') {
+    if (!requestBody.max_tokens) {
+      requestBody.max_tokens = 4096;
+    }
+
+    if (Array.isArray(requestBody.messages)) {
+      const systemMessages = requestBody.messages.filter((m: any) => m?.role === 'system');
+      const nonSystemMessages = requestBody.messages.filter((m: any) => m?.role !== 'system');
+
+      if (systemMessages.length > 0) {
+        const systemText = systemMessages
+          .map((m: any) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)))
+          .join('\n\n');
+        requestBody.system = requestBody.system
+          ? `${requestBody.system}\n\n${systemText}`
+          : systemText;
+        requestBody.messages = nonSystemMessages;
+      }
+    }
+  }
+
+  /**
    * Google Gemini possui formato diferente de OpenAI/Anthropic.
    * Se o cliente passar messages ou prompt e NÃO for um payload já com contents nativos nem endpoint customizado de outro tipo,
    * convertemos automaticamente para o formato contents do Gemini.

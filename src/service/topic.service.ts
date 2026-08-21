@@ -953,17 +953,22 @@ class TopicService {
         period.endDate
       );
 
-    let answer: TopicAnswer | null =
-      topic.assistant
-        ? await this.callAssistant(
-            topic.assistant,
-            topic.name,
-            this.normalizeQuestions(topic.questions),
-            context
-          ).catch(() => null)
-        : null;
+    let answer: TopicAnswer | null = null;
 
-    if (!answer) {
+    if (topic.assistant) {
+      try {
+        answer = await this.callAssistant(
+          topic.assistant,
+          topic.name,
+          this.normalizeQuestions(topic.questions),
+          context
+        );
+      } catch (err: any) {
+        console.error('[TopicService] Falha ao invocar LLM para o tópico:', err?.message || err);
+      }
+    }
+
+    if (!answer || !answer.content || (answer.statusCode && answer.statusCode >= 400)) {
       const summary = (context as any)?.summary || {};
       const totalReqs = summary.totalRequests || summary.requests || 0;
       const totalCost = Number(summary.totalCost || summary.cost || 0).toFixed(4);
@@ -973,14 +978,19 @@ class TopicService {
       const qList = (this.normalizeQuestions(topic.questions) || []).map((q: string) => `• ${q}`).join("\n");
 
       answer = {
+        statusCode: 200,
+        provider: topic.assistant?.provider || 'sistema',
+        model: topic.assistant?.model || 'analítica',
         content: `📊 **Análise do Tópico: ${topic.name}**\n\n` +
           `**Perguntas de Referência:**\n${qList || '• Análise geral de consumo'}\n\n` +
           `**Métricas Processadas:**\n` +
           `• **Total de Requisições:** ${totalReqs}\n` +
-          `• **Custo Total Estimado:** R$ ${totalCost}\n` +
+          `• **Custo Total Estimado:** $ ${totalCost}\n` +
           `• **Volume de Tokens:** ${totalTokens}\n` +
           `• **Latência Média:** ${avgLatency}ms\n\n` +
-          `💡 *Dica: Associe um Assistente ao tópico nas configurações para análises interpretadas via IA.*`
+          (topic.assistant && answer && answer.statusCode && answer.statusCode >= 400
+            ? `⚠️ *Nota: O modelo do analista ("${topic.assistant.model || 'não configurado'}") retornou status ${answer.statusCode} na API externa. Exibindo métricas compiladas do período.*`
+            : `💡 *Dica: Associe um Assistente e credenciais ativas ao tópico para respostas textuais geradas via IA.*`)
       };
     }
 
@@ -1118,6 +1128,14 @@ class TopicService {
       "Responda em portugu\u00eas do Brasil, de forma objetiva, usando somente os dados do contexto. Se algum dado n\u00e3o estiver dispon\u00edvel, informe isso claramente."
     ].join("\n");
 
+    const modelToUse = assistant.model?.trim()
+      ? assistant.model.trim()
+      : (credential.provider === 'anthropic' ? 'claude-3-5-sonnet-20241022'
+        : credential.provider === 'google' ? 'gemini-1.5-flash'
+        : credential.provider === 'groq' ? 'llama-3.3-70b-versatile'
+        : credential.provider === 'mistral' ? 'mistral-large-latest'
+        : 'gpt-4o-mini');
+
     const result =
       await callProvider({
 
@@ -1125,7 +1143,7 @@ class TopicService {
 
         apiKey:credential.apiKey,
 
-        model:assistant.model,
+        model:modelToUse,
 
         baseUrl:
           credential.baseUrl ?? undefined,
@@ -1155,7 +1173,7 @@ class TopicService {
 
       provider:credential.provider,
 
-      model:assistant.model,
+      model:modelToUse,
 
       statusCode:result.statusCode,
 

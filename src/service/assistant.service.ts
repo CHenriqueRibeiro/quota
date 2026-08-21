@@ -119,6 +119,14 @@ class AssistantService {
     });
   }
 
+  const defaultModel = apiKey.provider === 'anthropic' ? 'claude-3-5-sonnet-20241022'
+    : apiKey.provider === 'google' ? 'gemini-1.5-flash'
+    : apiKey.provider === 'groq' ? 'llama-3.3-70b-versatile'
+    : apiKey.provider === 'mistral' ? 'mistral-large-latest'
+    : 'gpt-4o-mini';
+
+  const chosenModel = data.model?.trim() ? data.model.trim() : defaultModel;
+
   const assistant =
     await prisma.assistant.create({
       data:{
@@ -129,7 +137,7 @@ class AssistantService {
         description: data.description?.trim() || null,
         type: data.type || "CUSTOM",
         provider: apiKey.provider,
-        model: data.model,
+        model: chosenModel,
         systemPrompt: data.systemPrompt,
         temperature:
           data.temperature !== undefined && data.temperature !== null ? Number(data.temperature) : 0.2,
