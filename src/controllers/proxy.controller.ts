@@ -1,4 +1,4 @@
-﻿import type { FastifyReply } from 'fastify';
+import type { FastifyReply } from 'fastify';
 import type { AuthenticatedRequest } from '../types/auth';
 import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';
@@ -176,11 +176,23 @@ export class ProxyController {
       });
     }
 
+    const customEndpoint =
+      (typeof body?.endpoint === 'string' && body.endpoint.trim()) ||
+      (typeof body?.path === 'string' && body.path.trim()) ||
+      (typeof body?.targetUrl === 'string' && body.targetUrl.trim()) ||
+      (typeof headers['x-endpoint'] === 'string' && headers['x-endpoint'].trim()) ||
+      (typeof headers['x-path'] === 'string' && headers['x-path'].trim()) ||
+      (typeof headers['x-target-url'] === 'string' && headers['x-target-url'].trim()) ||
+      undefined;
+
     const providerPayload = { ...body };
     delete providerPayload.provider;
     delete providerPayload.requestId;
     delete providerPayload.billingGroup;
     delete providerPayload.apiKey;
+    delete providerPayload.endpoint;
+    delete providerPayload.path;
+    delete providerPayload.targetUrl;
 
     let providerResult;
     const providerStartedAt = Date.now();
@@ -192,6 +204,7 @@ export class ProxyController {
         model,
         body: providerPayload,
         baseUrl: credential.baseUrl ?? undefined,
+        endpoint: customEndpoint,
       });
     } catch (error) {
       request.log.error(error, 'Provider request failed');
@@ -268,6 +281,7 @@ export class ProxyController {
     return reply.status(statusCode).send({
       provider,
       model,
+      ...(customEndpoint && { endpoint: customEndpoint }),
       billingGroup,
       requestId,
       success,

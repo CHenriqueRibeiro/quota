@@ -850,26 +850,76 @@ Rota auxiliar de upload de imagem para o Cloudinary.
 ### 9. Proxy & Collector (Ingestão e Telemetria)
 
 #### `POST /proxy`
-Encaminha requisições de IA para o provider configurado no tenant, aplicando rate-limiting de quota e enfileirando dados de telemetria.
+Encaminha requisições de IA para o provider configurado no tenant, aplicando rate-limiting de quota e enfileirando dados de telemetria automaticamente.
+
 - **Autenticação**: Header `x-api-key: quota_live_...` (**Obrigatório**) + Middleware `quotaLimiter(100 req/min)`
 - **Headers HTTP**:
   - `x-api-key` (string, **Obrigatório**): Chave de API do Quota.
+  - `x-endpoint` / `x-path` / `x-target-url` (string, **Opcional**): Endpoint customizado no provider (ex: `"/v1/images/generations"`, `"/v1/embeddings"`, `"/v1/audio/transcriptions"`). Se omitido, usa a rota padrão de Chat/Texto.
   - `x-billing-group` (string, **Opcional**): Nome do grupo de faturamento/centro de custo.
   - `x-agent` (string, **Opcional**): Nome do agente chamador.
   - `x-project` (string, **Opcional**): Nome do projeto.
   - `x-environment` (string, **Opcional**): Ambiente (`production`, `staging`, etc.).
   - `x-user-id` (string, **Opcional**): ID do usuário final.
-  - `x-request-group` (string, **Opcional**): Agrupador customizado.
+  - `x-request-group` (string, **Opcional**): Agrupador customizado de fluxos.
   - `x-trace-id` (string, **Opcional**): ID de rastreamento (gera UUID se omitido).
-  - `x-tags` (string separada por vírgulas, **Opcional**): Tags para indexação (ex: `"v1,chat"`).
+  - `x-tags` (string separada por vírgulas, **Opcional**): Tags para indexação (ex: `"v1,chat,imagem"`).
 - **Body (JSON)**:
-  - `model` (string, **Obrigatório**): Modelo a ser executado (ex: `"gpt-4o"`). Validado se houver restrições na API key.
-  - *Demais propriedades*: Payload livre repassado diretamente para a API do provider (ex: `messages`, `temperature`, `max_tokens`).
+  - `model` (string, **Obrigatório**): Modelo a ser executado (ex: `"gpt-4o"`, `"dall-e-3"`, `"text-embedding-3-small"`, `"gemini-2.0-flash"`). Validado se houver restrições na API key.
+  - `endpoint` / `path` / `targetUrl` (string, **Opcional**): Permite definir a rota de destino no provedor diretamente no corpo JSON.
+  - *Demais propriedades*: Payload livre repassado diretamente para a API do provider (ex: `messages`, `prompt`, `input`, `temperature`, `size`, etc.).
+- **Roteamento de Endpoints (Padrão vs Customizado)**:
+  - **Padrão (Chat/Texto)**: Se `endpoint` for omitido, encaminha para `/v1/chat/completions` (OpenAI, Groq, Mistral), `/v1/messages` (Claude) ou `/v1beta/models/${model}:generateContent` (Gemini).
+  - **Customizado (Imagens, Embeddings, Áudio, etc.)**: Envie `endpoint: "/v1/images/generations"` ou qualquer rota relativa/absoluta suportada pelo seu provedor.
+
+##### Exemplos de Uso do `POST /proxy`:
+
+* **1. Chat / Texto Padrão (OpenAI / Claude / Gemini / Groq / Mistral):**
+  ```json
+  POST /proxy
+  {
+    "model": "gpt-4o",
+    "messages": [{ "role": "user", "content": "Olá, resuma este texto!" }]
+  }
+  ```
+
+* **2. Geração de Imagens (DALL-E 3):**
+  ```json
+  POST /proxy
+  {
+    "endpoint": "/v1/images/generations",
+    "model": "dall-e-3",
+    "prompt": "Um astronauta flutuando no espaço, estilo cyberpunk",
+    "size": "1024x1024"
+  }
+  ```
+
+* **3. Embeddings / Vetorização (OpenAI, Mistral ou Groq):**
+  ```json
+  POST /proxy
+  {
+    "endpoint": "/v1/embeddings",
+    "model": "text-embedding-3-small",
+    "input": "Texto para indexar no banco vetorial"
+  }
+  ```
+
+* **4. Google Gemini Stream ou Customizado:**
+  ```json
+  POST /proxy
+  {
+    "endpoint": "/v1beta/models/${model}:streamGenerateContent",
+    "model": "gemini-2.0-flash",
+    "contents": [{ "parts": [{ "text": "Explique gravidade quântica." }] }]
+  }
+  ```
+
 - **Resposta (200 OK / Status do Provider)**:
   ```json
   {
-    "provider": "OPENAI",
+    "provider": "openai",
     "model": "gpt-4o",
+    "endpoint": "/v1/images/generations",
     "billingGroup": "Vendas",
     "requestId": "req_uuid",
     "success": true,
@@ -878,6 +928,9 @@ Encaminha requisições de IA para o provider configurado no tenant, aplicando r
     "promptTokens": 120,
     "completionTokens": 80,
     "totalTokens": 200,
+    "cachedTokens": 0,
+    "reasoningTokens": 0,
+    "cacheCreationTokens": 0,
     "response": { ... }
   }
   ```

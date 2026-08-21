@@ -7,6 +7,7 @@ export interface ProviderCallOptions {
   model: string;
   body: any;
   baseUrl?: string;
+  endpoint?: string;
 }
 
 export interface ProviderCallResult {
@@ -21,43 +22,64 @@ export interface ProviderCallResult {
   latencyMs: number;
 }
 
-const DEFAULT_PROVIDER_URLS: Record<SupportedProvider, string> = {
+export const PROVIDER_BASE_ORIGINS: Record<SupportedProvider, string> = {
+  openai: 'https://api.openai.com',
+  anthropic: 'https://api.anthropic.com',
+  google: 'https://generativelanguage.googleapis.com',
+  groq: 'https://api.groq.com/openai',
+  mistral: 'https://api.mistral.ai',
+};
+
+export const DEFAULT_PROVIDER_URLS: Record<SupportedProvider, string> = {
   openai: 'https://api.openai.com/v1/chat/completions',
-
   anthropic: 'https://api.anthropic.com/v1/messages',
-
   google:
     'https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent',
-
   groq: 'https://api.groq.com/openai/v1/chat/completions',
-
   mistral: 'https://api.mistral.ai/v1/chat/completions',
 };
 
-
-function buildProviderUrl(
+export function buildProviderUrl(
   provider: SupportedProvider,
   baseUrl: string | undefined,
-  model: string
-) {
-  if (baseUrl && baseUrl.trim()) {
-    return baseUrl.trim();
+  model: string,
+  endpoint?: string
+): string {
+  let rawUrl: string;
+
+  if (endpoint && endpoint.trim()) {
+    const cleanEndpoint = endpoint.trim();
+    if (cleanEndpoint.startsWith('http://') || cleanEndpoint.startsWith('https://')) {
+      rawUrl = cleanEndpoint;
+    } else {
+      const pathWithSlash = cleanEndpoint.startsWith('/') ? cleanEndpoint : `/${cleanEndpoint}`;
+      if (baseUrl && baseUrl.trim()) {
+        const cleanBase = baseUrl.trim().replace(/\/+$/, '');
+        rawUrl = `${cleanBase}${pathWithSlash}`;
+      } else {
+        const origin = PROVIDER_BASE_ORIGINS[provider] ?? 'https://api.openai.com';
+        if (provider === 'groq' && pathWithSlash.startsWith('/openai/')) {
+          rawUrl = `https://api.groq.com${pathWithSlash}`;
+        } else {
+          rawUrl = `${origin.replace(/\/+$/, '')}${pathWithSlash}`;
+        }
+      }
+    }
+  } else if (baseUrl && baseUrl.trim()) {
+    rawUrl = baseUrl.trim();
+  } else {
+    rawUrl = DEFAULT_PROVIDER_URLS[provider] ?? DEFAULT_PROVIDER_URLS.openai;
   }
 
-  const template = DEFAULT_PROVIDER_URLS[provider];
-
-  if (template.includes('${model}')) {
+  if (rawUrl.includes('${model}')) {
     if (!model?.trim()) {
       throw new Error('Model is required for this provider endpoint');
     }
 
-    return template.replace(
-      '${model}',
-      encodeURIComponent(model)
-    );
+    return rawUrl.replace(/\$\{model\}/g, encodeURIComponent(model));
   }
 
-  return template;
+  return rawUrl;
 }
 
 
@@ -149,28 +171,26 @@ function normalizeUsage(usage: any) {
 export async function callProvider(
   options: ProviderCallOptions
 ): Promise<ProviderCallResult> {
-
   const {
     provider,
     apiKey,
     model,
     body,
-    baseUrl
+    baseUrl,
+    endpoint,
   } = options;
-
 
   const url = buildProviderUrl(
     provider,
     baseUrl,
-    model
+    model,
+    endpoint
   );
-
 
   const headers = buildProviderHeaders(
     provider,
     apiKey
   );
-
 
   const supportsTemp = llmPricingService.supportsTemperature(model, provider);
 
@@ -195,24 +215,31 @@ export async function callProvider(
     delete requestBody.maxTokens;
   }
 
-
-
   /**
-   * Google Gemini possui formato diferente
-   * de OpenAI/Anthropic.
+   * Google Gemini possui formato diferente de OpenAI/Anthropic.
+   * Se o cliente passar messages ou prompt e NÃO for um payload já com contents nativos nem endpoint customizado de outro tipo,
+   * convertemos automaticamente para o formato contents do Gemini.
    */
-  if (provider === 'google') {
-
-    const text =
-      Array.isArray(body?.messages)
-
-        ? body.messages
-            .map((message: any) => message?.content)
-            .filter(Boolean)
-            .join('\n\n')
-
-        : body?.prompt ?? '';
-
+  if (
+    provider === 'google' &&
+    !requestBody.contents &&
+    (Array.isArray(body?.messages) || body?.prompt !== undefined)
+  ) {
+    const text = Array.isArray(body?.messages)
+      ? body.messages
+          .map((message: any) => {
+            if (typeof message?.content === 'string') return message.content;
+            if (Array.isArray(message?.content)) {
+              return message.content
+                .map((part: any) => (typeof part === 'string' ? part : part?.text || ''))
+                .filter(Boolean)
+                .join('\n');
+            }
+            return '';
+          })
+          .filter(Boolean)
+          .join('\n\n')
+      : body?.prompt ?? '';
 
     const generationConfig: Record<string, any> = {};
 
@@ -223,7 +250,6 @@ export async function callProvider(
     if (body?.max_tokens != null || body?.maxTokens != null) {
       generationConfig.maxOutputTokens = body?.max_tokens ?? body?.maxTokens;
     }
-
 
     requestBody = {
       contents: [
@@ -237,7 +263,6 @@ export async function callProvider(
       ],
       ...(Object.keys(generationConfig).length > 0 && { generationConfig }),
     } as any;
-
   }
 
 
