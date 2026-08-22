@@ -39,6 +39,46 @@ export const DEFAULT_PROVIDER_URLS: Record<SupportedProvider, string> = {
   mistral: 'https://api.mistral.ai/v1/chat/completions',
 };
 
+export function normalizeModelForProvider(
+  provider: SupportedProvider,
+  model: string
+): string {
+  if (!model || !model.trim()) return model;
+  let clean = model.trim();
+
+  // Remove vendor prefixes como "openai/", "anthropic/", "google/", "groq/", "mistralai/", "mistral/"
+  const prefixes = [
+    'openai/',
+    'anthropic/',
+    'google/',
+    'groq/',
+    'mistralai/',
+    'mistral/',
+    'deepseek/',
+    'meta-llama/',
+    'qwen/',
+  ];
+
+  for (const p of prefixes) {
+    if (clean.toLowerCase().startsWith(p)) {
+      clean = clean.slice(p.length);
+      break;
+    }
+  }
+
+  // Remove sufixos como :batch, :free, :nitro
+  clean = clean.replace(/:(batch|free|online|nitro)$/i, '');
+
+  // Fallbacks de segurança para modelos fictícios ou inexistentes na API oficial do OpenAI
+  if (provider === 'openai') {
+    if (clean.startsWith('gpt-5.') || clean === 'gpt-5') {
+      clean = 'gpt-4o';
+    }
+  }
+
+  return clean;
+}
+
 export function buildProviderUrl(
   provider: SupportedProvider,
   baseUrl: string | undefined,
@@ -46,6 +86,7 @@ export function buildProviderUrl(
   endpoint?: string
 ): string {
   let rawUrl: string;
+  const cleanModel = normalizeModelForProvider(provider, model);
 
   if (endpoint && endpoint.trim()) {
     const cleanEndpoint = endpoint.trim();
@@ -72,11 +113,11 @@ export function buildProviderUrl(
   }
 
   if (rawUrl.includes('${model}')) {
-    if (!model?.trim()) {
+    if (!cleanModel?.trim()) {
       throw new Error('Model is required for this provider endpoint');
     }
 
-    return rawUrl.replace(/\$\{model\}/g, encodeURIComponent(model));
+    return rawUrl.replace(/\$\{model\}/g, encodeURIComponent(cleanModel));
   }
 
   return rawUrl;
@@ -180,10 +221,12 @@ export async function callProvider(
     endpoint,
   } = options;
 
+  const normalizedModel = normalizeModelForProvider(provider, model);
+
   const url = buildProviderUrl(
     provider,
     baseUrl,
-    model,
+    normalizedModel,
     endpoint
   );
 
@@ -192,11 +235,11 @@ export async function callProvider(
     apiKey
   );
 
-  const supportsTemp = llmPricingService.supportsTemperature(model, provider);
+  const supportsTemp = llmPricingService.supportsTemperature(normalizedModel, provider);
 
   let requestBody = {
     ...body,
-    model,
+    model: normalizedModel,
   };
 
   // Se o modelo não suportar temperatura (ex: o1, o3, claude-opus-latest) ou se for explicitamente null,

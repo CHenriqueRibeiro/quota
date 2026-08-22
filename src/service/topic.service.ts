@@ -5,6 +5,7 @@ import scopeService from "./scope.service";
 import DashboardService from "./analytics/dashboard.service";
 import { callProvider } from "../lib/provider-client";
 import { isSupportedProvider } from "../lib/providers";
+import { addUsageJob } from "../lib/queue";
 
 export type TopicAnswer = {
   provider?: any;
@@ -958,8 +959,9 @@ class TopicService {
     if (topic.assistant) {
       try {
         answer = await this.callAssistant(
+          user,
+          topic,
           topic.assistant,
-          topic.name,
           this.normalizeQuestions(topic.questions),
           context
         );
@@ -970,12 +972,30 @@ class TopicService {
 
     if (!answer || !answer.content || (answer.statusCode && answer.statusCode >= 400)) {
       const summary = (context as any)?.summary || {};
-      const totalReqs = summary.totalRequests || summary.requests || 0;
-      const totalCost = Number(summary.totalCost || summary.cost || 0).toFixed(4);
-      const totalTokens = summary.totalTokens || summary.tokens || 0;
-      const avgLatency = Math.round(summary.averageLatencyMs || summary.latencyMs || 0);
+      const totalReqs = Number(summary.requests ?? summary.totalRequests ?? 0).toLocaleString('pt-BR');
+
+      const rawCost = typeof summary.costs?.total === 'number'
+        ? summary.costs.total
+        : (typeof summary.cost === 'number' ? summary.cost : (summary.totalCost ?? 0));
+      const totalCost = Number(rawCost).toFixed(4);
+
+      const rawTokens = typeof summary.tokens?.total === 'number'
+        ? summary.tokens.total
+        : (typeof summary.tokens === 'number' ? summary.tokens : (summary.totalTokens ?? 0));
+      const totalTokensFormatted = Number(rawTokens).toLocaleString('pt-BR');
+
+      const inputTokens = typeof summary.tokens?.input === 'number' ? Number(summary.tokens.input).toLocaleString('pt-BR') : null;
+      const outputTokens = typeof summary.tokens?.output === 'number' ? Number(summary.tokens.output).toLocaleString('pt-BR') : null;
+
+      const rawLatency = summary.latency?.averageMs ?? summary.latency?.average ?? summary.averageLatencyMs ?? summary.latencyMs ?? 0;
+      const avgLatency = Math.round(Number(rawLatency));
 
       const qList = (this.normalizeQuestions(topic.questions) || []).map((q: string) => `• ${q}`).join("\n");
+
+      let tokenDetails = `• **Volume de Tokens:** ${totalTokensFormatted}`;
+      if (inputTokens && outputTokens) {
+        tokenDetails += ` (${inputTokens} entrada / ${outputTokens} saída)`;
+      }
 
       answer = {
         statusCode: 200,
@@ -983,10 +1003,10 @@ class TopicService {
         model: topic.assistant?.model || 'analítica',
         content: `📊 **Análise do Tópico: ${topic.name}**\n\n` +
           `**Perguntas de Referência:**\n${qList || '• Análise geral de consumo'}\n\n` +
-          `**Métricas Processadas:**\n` +
+          `**Métricas Processadas do Período:**\n` +
           `• **Total de Requisições:** ${totalReqs}\n` +
           `• **Custo Total Estimado:** $ ${totalCost}\n` +
-          `• **Volume de Tokens:** ${totalTokens}\n` +
+          `${tokenDetails}\n` +
           `• **Latência Média:** ${avgLatency}ms\n\n` +
           (topic.assistant && answer && answer.statusCode && answer.statusCode >= 400
             ? `⚠️ *Nota: O modelo do analista ("${topic.assistant.model || 'não configurado'}") retornou status ${answer.statusCode} na API externa. Exibindo métricas compiladas do período.*`
@@ -1069,55 +1089,31 @@ class TopicService {
   }
 
   private async callAssistant(
-    assistant:any,
-    topicName:string,
-    questions:string[],
-    context:any
-  ){
+    user: AuthenticatedUser,
+    topic: any,
+    assistant: any,
+    questions: string[],
+    context: any
+  ) {
+    const apiKey = assistant.apiKey;
+    const credential = apiKey?.providerCredential;
 
-    const apiKey =
-      assistant.apiKey;
-
-    const credential =
-      apiKey?.providerCredential;
-
-    if(!apiKey || !credential){
-
+    if (!apiKey || !credential) {
       return null;
-
     }
 
-
-
-    if(!credential.isActive){
-
-      throw new Error(
-        "Provider Credential do Assistant est\u00e1 inativa."
-      );
-
+    if (!credential.isActive) {
+      throw new Error("Provider Credential do Assistant está inativa.");
     }
 
-
-
-    if(!isSupportedProvider(credential.provider)){
-
-      throw new Error(
-        "Provider do Assistant n\u00e3o suportado."
-      );
-
+    if (!isSupportedProvider(credential.provider)) {
+      throw new Error("Provider do Assistant não suportado.");
     }
 
-
-
-    const contextText =
-      JSON.stringify(
-        context,
-        null,
-        2
-      );
+    const contextText = JSON.stringify(context, null, 2);
 
     const userPrompt = [
-      `T\u00f3pico: ${topicName}`,
+      `Tópico: ${topic.name || 'Análise de Telemetria'}`,
       "",
       "Perguntas selecionadas:",
       ...questions.map(question => `- ${question}`),
@@ -1125,7 +1121,7 @@ class TopicService {
       "Contexto consultado no banco:",
       contextText,
       "",
-      "Responda em portugu\u00eas do Brasil, de forma objetiva, usando somente os dados do contexto. Se algum dado n\u00e3o estiver dispon\u00edvel, informe isso claramente."
+      "Responda em português do Brasil, de forma objetiva, usando somente os dados do contexto. Se algum dado não estiver disponível, informe isso claramente."
     ].join("\n");
 
     const modelToUse = assistant.model?.trim()
@@ -1136,62 +1132,73 @@ class TopicService {
         : credential.provider === 'mistral' ? 'mistral-large-latest'
         : 'gpt-4o-mini');
 
-    const result =
-      await callProvider({
+    const result = await callProvider({
+      provider: credential.provider,
+      apiKey: credential.apiKey,
+      model: modelToUse,
+      baseUrl: credential.baseUrl ?? undefined,
+      body: {
+        messages: [
+          ...(assistant.systemPrompt?.trim()
+            ? [{ role: "system", content: assistant.systemPrompt.trim() }]
+            : []),
+          {
+            role: "user",
+            content: userPrompt,
+          },
+        ],
+        temperature: assistant.temperature,
+        max_tokens: assistant.maxTokens
+      }
+    });
 
-        provider:credential.provider,
+    const billingGroupMap: Record<string, string> = {
+      FINANCE: 'Financeiro',
+      OPERATIONS: 'Operações',
+      SUPPORT: 'Suporte',
+      SALES: 'Vendas',
+      GENERAL: 'Geral',
+      CUSTOM: 'Personalizado',
+    };
+    const billingGroupName = billingGroupMap[assistant.type || topic.category || ''] || assistant.type || topic.category || 'Quopiloto';
 
-        apiKey:credential.apiKey,
-
-        model:modelToUse,
-
-        baseUrl:
-          credential.baseUrl ?? undefined,
-
-        body:{
-
-          messages: [
-            ...(assistant.systemPrompt?.trim()
-              ? [{ role: "system", content: assistant.systemPrompt.trim() }]
-              : []),
-            {
-              role: "user",
-              content: userPrompt,
-            },
-          ],
-
-          temperature:assistant.temperature,
-          max_tokens:assistant.maxTokens
-
-        }
-
+    try {
+      await addUsageJob({
+        tenantId: user.tenantId,
+        apiKeyId: assistant.apiKeyId ?? null,
+        provider: credential.provider,
+        model: modelToUse,
+        statusCode: result.statusCode ?? 200,
+        latencyMs: result.latencyMs ?? 0,
+        promptTokens: result.promptTokens ?? 0,
+        completionTokens: result.completionTokens ?? 0,
+        totalTokens: result.totalTokens ?? ((result.promptTokens ?? 0) + (result.completionTokens ?? 0)),
+        cachedTokens: result.cachedTokens ?? 0,
+        reasoningTokens: result.reasoningTokens ?? 0,
+        project: 'quopilot',
+        agent: assistant.name || 'Quopiloto',
+        billingGroup: billingGroupName,
+        tags: ['quopilot', 'copilot-test', 'analise-topico'],
+        environment: 'production',
+        externalUserId: user.id || 'widget-user',
+        requestGroup: 'quopilot-analysis',
+        traceId: `qta_quopilot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       });
-
-
+    } catch (queueErr) {
+      console.error('[TopicService] Erro ao enfileirar métrica de uso do Quopiloto:', queueErr);
+    }
 
     return {
-
-      provider:credential.provider,
-
-      model:modelToUse,
-
-      statusCode:result.statusCode,
-
-      latencyMs:result.latencyMs,
-
-      promptTokens:result.promptTokens,
-
-      completionTokens:result.completionTokens,
-
-      totalTokens:result.totalTokens,
-
-      content:
-        this.extractProviderText(result.body),
-
-      raw:result.body
-
+      provider: credential.provider,
+      model: modelToUse,
+      statusCode: result.statusCode,
+      latencyMs: result.latencyMs,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      totalTokens: result.totalTokens,
+      content: this.extractProviderText(result.body),
+      raw: result.body
     };
-
   }
 
   private extractProviderText(
