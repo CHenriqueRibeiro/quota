@@ -209,37 +209,42 @@ export default class DashboardService {
       },
     });
 
-    const map = new Map<string, { requests: number; tokens: number; cost: number }>();
+    const map = new Map<string, { name: string; tagList: string[]; requests: number; tokens: number; cost: number }>();
 
     for (const log of logs) {
       let tagList: string[] = [];
       if (Array.isArray(log.tags)) {
-        tagList = log.tags.filter((t): t is string => typeof t === "string");
-      } else if (typeof log.tags === "string") {
-        tagList = [log.tags];
-      } else {
-        tagList = ["Sem tag"];
+        tagList = log.tags.filter((t): t is string => typeof t === "string" && t.trim().length > 0);
+      } else if (typeof log.tags === "string" && log.tags.trim().length > 0) {
+        tagList = [log.tags.trim()];
       }
 
-      if (tagList.length === 0) tagList = ["Sem tag"];
+      const sortedTags = [...tagList].sort();
+      const groupKey = sortedTags.length > 0 ? sortedTags.join(", ") : "Sem tag";
 
-      for (const tagName of tagList) {
-        const current = map.get(tagName) || { requests: 0, tokens: 0, cost: 0 };
-        current.requests += 1;
-        current.tokens += log.totalTokens || 0;
-        current.cost += Number(log.estimatedCost || 0);
-        map.set(tagName, current);
-      }
+      const current = map.get(groupKey) || {
+        name: groupKey,
+        tagList: sortedTags.length > 0 ? sortedTags : ["Sem tag"],
+        requests: 0,
+        tokens: 0,
+        cost: 0,
+      };
+
+      current.requests += 1;
+      current.tokens += log.totalTokens || 0;
+      current.cost += Number(log.estimatedCost || 0);
+      map.set(groupKey, current);
     }
 
-    return Array.from(map.entries())
-      .map(([name, stats]) => ({
-        name,
+    return Array.from(map.values())
+      .map((stats) => ({
+        name: stats.name,
+        tagList: stats.tagList,
         requests: stats.requests,
         tokens: stats.tokens,
         cost: stats.cost,
       }))
-      .sort((a, b) => b.tokens - a.tokens);
+      .sort((a, b) => b.cost - a.cost || b.tokens - a.tokens);
   }
 
   static async getBillingGroups(where: Prisma.UsageLogWhereInput) {

@@ -34,40 +34,52 @@ export class TagsAnalyticsController {
         },
       });
 
-      const map = new Map<string, { requests: number; tokens: number; cost: number }>();
+      const map = new Map<string, { name: string; tagList: string[]; requests: number; tokens: number; cost: number }>();
+
+      let totalRequests = 0;
+      let totalTokens = 0;
+      let totalCost = 0;
 
       for (const log of logs) {
+        totalRequests += 1;
+        totalTokens += log.totalTokens || 0;
+        totalCost += Number(log.estimatedCost || 0);
+
         let tagList: string[] = [];
         if (Array.isArray(log.tags)) {
-          tagList = log.tags.filter((t): t is string => typeof t === "string");
-        } else if (typeof log.tags === "string") {
-          tagList = [log.tags];
-        } else {
-          tagList = ["Sem tag"];
+          tagList = log.tags.filter((t): t is string => typeof t === "string" && t.trim().length > 0);
+        } else if (typeof log.tags === "string" && log.tags.trim().length > 0) {
+          tagList = [log.tags.trim()];
         }
 
-        if (tagList.length === 0) tagList = ["Sem tag"];
+        // Ordena as tags para manter agrupamento uniforme
+        const sortedTags = [...tagList].sort();
+        const groupKey = sortedTags.length > 0 ? sortedTags.join(", ") : "Sem tag";
 
-        for (const tagName of tagList) {
-          const current = map.get(tagName) || { requests: 0, tokens: 0, cost: 0 };
-          current.requests += 1;
-          current.tokens += log.totalTokens || 0;
-          current.cost += Number(log.estimatedCost || 0);
-          map.set(tagName, current);
-        }
+        const current = map.get(groupKey) || {
+          name: groupKey,
+          tagList: sortedTags.length > 0 ? sortedTags : ["Sem tag"],
+          requests: 0,
+          tokens: 0,
+          cost: 0,
+        };
+
+        current.requests += 1;
+        current.tokens += log.totalTokens || 0;
+        current.cost += Number(log.estimatedCost || 0);
+        map.set(groupKey, current);
       }
 
-      const tags = Array.from(map.entries())
-        .map(([name, stats]) => ({
-          name,
-          requests: stats.requests,
-          tokens: stats.tokens,
-          cost: stats.cost,
-        }))
-        .sort((a, b) => b.tokens - a.tokens);
+      const tags = Array.from(map.values())
+        .sort((a, b) => b.cost - a.cost || b.requests - a.requests);
 
       return reply.send({
         tags,
+        summary: {
+          totalRequests,
+          totalTokens,
+          totalCost,
+        },
         period: {
           startDate,
           endDate,
