@@ -14,6 +14,10 @@ export interface LLMPriceItem {
   input_cached: number | null;
   /** Preço por 1 milhão de tokens de escrita em cache (USD) — null se não suportado */
   input_cache_write: number | null;
+  /** Preço por 1 milhão de tokens de raciocínio (USD) — null se não aplicável */
+  reasoning?: number | null;
+  /** Tamanho máximo da janela de contexto em tokens */
+  context_length?: number | null;
   /** Flag indicando se o modelo aceita o parâmetro temperature */
   supports_temperature: boolean;
   supported_parameters?: string[];
@@ -27,6 +31,8 @@ export interface ProviderModelItem {
   input: number;
   output: number;
   input_cached: number | null;
+  reasoning?: number | null;
+  context_length?: number | null;
   supports_temperature: boolean;
 }
 
@@ -109,8 +115,8 @@ class LLMPricingService {
     this.isSyncing = true;
 
     try {
-      console.log("🔄 Buscando preços atualizados de LLM de https://openrouter.ai/api/v1/models...");
-      const response = await fetch("https://openrouter.ai/api/v1/models", {
+      console.log("🔄 Buscando preços atualizados de LLM de https://openrouter.ai/api/v1/models?sort=most-popular...");
+      const response = await fetch("https://openrouter.ai/api/v1/models?sort=most-popular", {
         headers: { "User-Agent": "Quota-IA/1.0" }
       });
 
@@ -130,19 +136,23 @@ class LLMPricingService {
         const pricing = model.pricing;
         if (!pricing) continue;
 
-        // Converte de preço por token → por 1 milhão de tokens
-        const inputPerM = perTokenToPerMillion(pricing.prompt);
-        const outputPerM = perTokenToPerMillion(pricing.completion);
+        // Converte de preço por token → por 1 milhão de tokens (arredondado)
+        const inputPerM = Number(perTokenToPerMillion(pricing.prompt).toFixed(4));
+        const outputPerM = Number(perTokenToPerMillion(pricing.completion).toFixed(4));
 
         // Modelos com preço zero em input E output são roteadores/agregadores — ignora
         if (inputPerM === 0 && outputPerM === 0) continue;
 
         const cacheReadPerM = pricing.input_cache_read != null
-          ? perTokenToPerMillion(pricing.input_cache_read)
+          ? Number(perTokenToPerMillion(pricing.input_cache_read).toFixed(4))
           : null;
 
         const cacheWritePerM = pricing.input_cache_write != null
-          ? perTokenToPerMillion(pricing.input_cache_write)
+          ? Number(perTokenToPerMillion(pricing.input_cache_write).toFixed(4))
+          : null;
+
+        const reasoningPerM = pricing.internal_reasoning != null
+          ? Number(perTokenToPerMillion(pricing.internal_reasoning).toFixed(4))
           : null;
 
         // Detecção de suporte a temperatura via default_parameters e supported_parameters
@@ -153,15 +163,20 @@ class LLMPricingService {
         const isTempNullInDefault = defaultParams.temperature === null;
         const supportsTemperature = hasTempInSupported && !isTempNullInDefault;
 
+        const rawName = model.name ?? model.id;
+        const cleanName = rawName.replace(/^(anthropic|openai|google|groq|mistral|meta|meta-llama|mistralai):\s*/i, '').trim();
+
         filteredPrices.push({
           id: model.id,
           canonical_slug: model.canonical_slug || undefined,
           vendor,
-          name: model.name ?? model.id,
+          name: cleanName,
           input: inputPerM,
           output: outputPerM,
           input_cached: cacheReadPerM,
           input_cache_write: cacheWritePerM,
+          reasoning: reasoningPerM,
+          context_length: model.context_length ?? null,
           supports_temperature: supportsTemperature,
           supported_parameters: supportedParams,
         });
@@ -180,6 +195,8 @@ class LLMPricingService {
           input: p.input,
           output: p.output,
           input_cached: p.input_cached,
+          reasoning: p.reasoning,
+          context_length: p.context_length,
           supports_temperature: p.supports_temperature,
         });
       }
