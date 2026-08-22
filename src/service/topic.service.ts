@@ -6,6 +6,7 @@ import DashboardService from "./analytics/dashboard.service";
 import { callProvider } from "../lib/provider-client";
 import { isSupportedProvider } from "../lib/providers";
 import { addUsageJob } from "../lib/queue";
+import { parseBrasiliaStartDate, parseBrasiliaEndDate } from "../lib/timezone";
 
 export type TopicAnswer = {
   provider?: any;
@@ -1044,48 +1045,24 @@ class TopicService {
   private buildPeriod(
     data:ExecuteTopicBody
   ){
-
-    const endDate =
-      data.endDate
-        ? new Date(data.endDate)
-        : new Date();
-
-    const startDate =
-      data.startDate
-        ? new Date(data.startDate)
-        : new Date(endDate);
-
-    if(!data.startDate){
-
-      startDate.setDate(
-        startDate.getDate() - 30
-      );
-
-    }
-
-
+    const endDate = parseBrasiliaEndDate(data.endDate);
+    const startDate = data.startDate
+      ? parseBrasiliaStartDate(data.startDate)
+      : new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     if(
       Number.isNaN(startDate.getTime()) ||
       Number.isNaN(endDate.getTime())
     ){
-
       throw new Error(
-        "Per\u00edodo inv\u00e1lido."
+        "Período inválido."
       );
-
     }
 
-
-
     return {
-
       startDate,
-
       endDate
-
     };
-
   }
 
   private async callAssistant(

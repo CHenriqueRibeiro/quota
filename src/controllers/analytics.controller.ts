@@ -3,6 +3,7 @@ import type { AuthenticatedRequest } from "../types/auth";
 import ScopeService from "../service/scope.service";
 import { prisma } from "../lib/prisma";
 import { getPlanLimits } from "../config/plan-limits";
+import { parseBrasiliaStartDate, parseBrasiliaEndDate } from "../lib/timezone";
 
 import DashboardService from "../service/analytics/dashboard.service";
 
@@ -46,25 +47,8 @@ export class AnalyticsController {
       });
     }
 
-    const now = new Date();
-
-    const startOfMonth = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      1
-    );
-
-    const startDate = query.startDate
-      ? new Date(query.startDate)
-      : startOfMonth;
-
-    let endDate = now;
-    if (query.endDate) {
-      endDate = new Date(query.endDate);
-      if (query.endDate.length <= 10) {
-        endDate.setUTCHours(23, 59, 59, 999);
-      }
-    }
+    const startDate = parseBrasiliaStartDate(query.startDate);
+    const endDate = parseBrasiliaEndDate(query.endDate);
 
     const where =
       await ScopeService.buildWhere(

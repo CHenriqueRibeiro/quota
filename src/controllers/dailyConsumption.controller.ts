@@ -1,7 +1,8 @@
-﻿import type { FastifyReply } from "fastify";
+import type { FastifyReply } from "fastify";
 import type { AuthenticatedRequest } from "../types/auth";
 import ScopeService from "../service/scope.service";
 import DashboardService from "../service/analytics/dashboard.service";
+import { parseBrasiliaStartDate, parseBrasiliaEndDate } from "../lib/timezone";
 
 type DailyConsumptionQuery = {
   startDate?: string;
@@ -23,11 +24,8 @@ export class DailyConsumptionController {
       }
 
       const query = request.query as DailyConsumptionQuery;
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-      const startDate = query.startDate ? new Date(query.startDate) : startOfMonth;
-      const endDate = query.endDate ? new Date(query.endDate) : now;
+      const startDate = parseBrasiliaStartDate(query.startDate);
+      const endDate = parseBrasiliaEndDate(query.endDate);
 
       const where = await ScopeService.buildWhere(user, startDate, endDate);
       const dailyConsumption = await DashboardService.getDailyConsumption(where);

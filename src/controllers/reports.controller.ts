@@ -4,6 +4,7 @@ import type { AuthenticatedRequest } from "../types/auth";
 import reportsService from "../service/reports.service";
 import { getPlanLimits } from "../config/plan-limits";
 import auditService from "../service/audit.service";
+import { parseBrasiliaStartDate, parseBrasiliaEndDate } from "../lib/timezone";
 
 export class ReportsController {
 
@@ -26,9 +27,9 @@ export class ReportsController {
         });
       }
 
-      const startDate = query.startDate || body.startDate ? new Date(query.startDate || body.startDate) : undefined;
+      const startDate = query.startDate || body.startDate ? parseBrasiliaStartDate(query.startDate || body.startDate) : undefined;
 
-      const endDate = query.endDate || body.endDate ? new Date(query.endDate || body.endDate) : undefined;
+      const endDate = query.endDate || body.endDate ? parseBrasiliaEndDate(query.endDate || body.endDate) : undefined;
 
       const csvData = await reportsService.generateDetailedCsv({
         tenantId,
@@ -68,9 +69,9 @@ export class ReportsController {
         });
       }
 
-      const startDate = query.startDate || body.startDate ? new Date(query.startDate || body.startDate) : undefined;
+      const startDate = query.startDate || body.startDate ? parseBrasiliaStartDate(query.startDate || body.startDate) : undefined;
 
-      const endDate = query.endDate || body.endDate ? new Date(query.endDate || body.endDate) : undefined;
+      const endDate = query.endDate || body.endDate ? parseBrasiliaEndDate(query.endDate || body.endDate) : undefined;
 
       const csvData = await reportsService.generateOverviewCsv({
         tenantId,

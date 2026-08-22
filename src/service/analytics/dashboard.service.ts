@@ -293,7 +293,7 @@ export default class DashboardService {
     const whereSql = buildUsageLogSqlWhere(where);
     const rows = await prisma.$queryRaw<Array<{ date: string; requests: number; tokens: number; cost: number }>>`
       SELECT 
-        TO_CHAR(DATE_TRUNC('day', "createdAt"), 'YYYY-MM-DD') AS date,
+        TO_CHAR(DATE_TRUNC('day', ("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')), 'YYYY-MM-DD') AS date,
         COUNT(id)::int AS requests,
         COALESCE(SUM("totalTokens"), 0)::int AS tokens,
         COALESCE(SUM("estimatedCost"), 0)::float AS cost

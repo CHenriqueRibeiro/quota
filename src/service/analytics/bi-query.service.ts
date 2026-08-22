@@ -95,7 +95,7 @@ export class BIQueryService {
     if (input.timeBucket && input.timeBucket !== 'none') {
       const granularity = BI_TIME_GRANULARITIES[input.timeBucket];
       if (granularity) {
-        const timeTruncSql = Prisma.sql`DATE_TRUNC(${Prisma.raw(`'${granularity.sqlTrunc}'`)}, "createdAt")`;
+        const timeTruncSql = Prisma.sql`DATE_TRUNC(${Prisma.raw(`'${granularity.sqlTrunc}'`)}, ("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo'))`;
         selectItems.push(Prisma.sql`${timeTruncSql} AS "time_bucket"`);
         groupByItems.push(timeTruncSql);
       }
