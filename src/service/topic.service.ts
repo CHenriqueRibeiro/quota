@@ -288,12 +288,13 @@ interface AddDefaultTopicsBody {
 
 }
 
-interface ExecuteTopicBody {
-
-  startDate?:string;
-
-  endDate?:string;
-
+export interface ExecuteTopicBody {
+  startDate?: string;
+  endDate?: string;
+  assistantId?: string;
+  apiKeyId?: string;
+  model?: string;
+  provider?: string;
 }
 
 
@@ -924,16 +925,60 @@ class TopicService {
       );
     }
 
-    if(topic.assistant && !topic.assistant.enabled){
-      throw new Error(
-        "Assistant desativado."
-      );
+    // 1. Resolve o Assistente de Execução (com suporte a override de teste)
+    let executionAssistant = topic.assistant;
+
+    if (data.assistantId && data.assistantId !== topic.assistantId) {
+      const customAssistant = await prisma.assistant.findFirst({
+        where: { id: data.assistantId, tenantId: user.tenantId, enabled: true },
+        include: {
+          apiKey: {
+            include: { providerCredential: true }
+          }
+        }
+      });
+      if (customAssistant) {
+        executionAssistant = customAssistant;
+      }
     }
 
-    if(topic.assistant?.apiKey && !topic.assistant.apiKey.isActive){
-      throw new Error(
-        "API Key do Assistant está inativa."
-      );
+    if (data.apiKeyId) {
+      const customApiKey = await prisma.apiKey.findFirst({
+        where: { id: data.apiKeyId, tenantId: user.tenantId, isActive: true },
+        include: { providerCredential: true }
+      });
+      if (customApiKey) {
+        executionAssistant = {
+          ...(executionAssistant || {
+            id: 'custom-test-assistant',
+            name: `Analista de Teste (${customApiKey.provider})`,
+            type: topic.category || 'GENERAL',
+            temperature: 0.2,
+            maxTokens: 4096,
+            systemPrompt: 'Você é um assistente especialista encarregado de analisar métricas e dados de consumo de IA.'
+          }),
+          apiKeyId: customApiKey.id,
+          apiKey: customApiKey,
+          provider: customApiKey.provider,
+        };
+      }
+    }
+
+    if (data.model && data.model.trim()) {
+      if (executionAssistant) {
+        executionAssistant = {
+          ...executionAssistant,
+          model: data.model.trim()
+        };
+      }
+    }
+
+    if (executionAssistant && !executionAssistant.enabled) {
+      throw new Error("Assistant desativado.");
+    }
+
+    if (executionAssistant?.apiKey && !executionAssistant.apiKey.isActive) {
+      throw new Error("API Key do Assistant está inativa.");
     }
 
     const period =
@@ -957,12 +1002,12 @@ class TopicService {
 
     let answer: TopicAnswer | null = null;
 
-    if (topic.assistant) {
+    if (executionAssistant) {
       try {
         answer = await this.callAssistant(
           user,
           topic,
-          topic.assistant,
+          executionAssistant,
           this.normalizeQuestions(topic.questions),
           context
         );

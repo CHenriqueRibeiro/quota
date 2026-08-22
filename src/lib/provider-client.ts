@@ -66,13 +66,103 @@ export function normalizeModelForProvider(
     }
   }
 
-  // Remove sufixos como :batch, :free, :nitro
-  clean = clean.replace(/:(batch|free|online|nitro)$/i, '');
+  // Remove sufixos como :batch, :free, :nitro, :fast
+  clean = clean.replace(/:(batch|free|online|nitro|fast)$/i, '');
 
-  // Fallbacks de segurança para modelos fictícios ou inexistentes na API oficial do OpenAI
+  const low = clean.toLowerCase();
+
+  // 1. ANTHROPIC CLAUDE MAPPING
+  if (provider === 'anthropic') {
+    if (low.includes('3-7-sonnet') || low.includes('3.7-sonnet') || low.includes('3.7 sonnet')) {
+      return 'claude-3-7-sonnet-20250219';
+    }
+    if (low.includes('3-5-sonnet') || low.includes('3.5-sonnet') || low.includes('3.5 sonnet')) {
+      return 'claude-3-5-sonnet-20241022';
+    }
+    if (low.includes('3-5-haiku') || low.includes('3.5-haiku') || low.includes('3.5 haiku')) {
+      return 'claude-3-5-haiku-20241022';
+    }
+    if (low.includes('3-opus') || low.includes('3.0-opus') || low.includes('3 opus')) {
+      return 'claude-3-opus-20240229';
+    }
+    if (low.includes('3-haiku') || low.includes('3 haiku')) {
+      return 'claude-3-haiku-20240307';
+    }
+    // Mapeia modelos fictícios / benchmarks sintéticos para modelos oficiais equivalentes
+    if (low.includes('opus')) {
+      return 'claude-3-opus-20240229';
+    }
+    if (low.includes('haiku')) {
+      return 'claude-3-5-haiku-20241022';
+    }
+    if (low.includes('sonnet') || low.includes('claude')) {
+      return 'claude-3-5-sonnet-20241022';
+    }
+    // Fallback seguro padrão para Anthropic
+    return 'claude-3-5-sonnet-20241022';
+  }
+
+  // 2. OPENAI MAPPING
   if (provider === 'openai') {
-    if (clean.startsWith('gpt-5.') || clean === 'gpt-5') {
-      clean = 'gpt-4o';
+    if (low.startsWith('gpt-5') || low.startsWith('gpt-4.1') || low.includes('luna-pro')) {
+      return 'gpt-4o';
+    }
+    if (low.includes('gpt-4o-mini')) {
+      return 'gpt-4o-mini';
+    }
+    if (low.includes('gpt-4o')) {
+      return 'gpt-4o';
+    }
+    if (low.includes('o3-mini')) {
+      return 'o3-mini';
+    }
+    if (low === 'o1' || low.startsWith('o1-')) {
+      return clean;
+    }
+    if (low.includes('gpt-4-turbo') || low.includes('gpt-4-1106') || low.includes('gpt-4-0125')) {
+      return 'gpt-4-turbo';
+    }
+    if (low.includes('gpt-3.5')) {
+      return 'gpt-3.5-turbo';
+    }
+  }
+
+  // 3. GOOGLE GEMINI MAPPING
+  if (provider === 'google') {
+    if (low.includes('2.0-flash') || low.includes('2-flash')) {
+      return 'gemini-2.0-flash';
+    }
+    if (low.includes('1.5-pro')) {
+      return 'gemini-1.5-pro';
+    }
+    if (low.includes('1.5-flash')) {
+      return 'gemini-1.5-flash';
+    }
+  }
+
+  // 4. GROQ MAPPING
+  if (provider === 'groq') {
+    if (low.includes('70b') || low.includes('llama-3.3')) {
+      return 'llama-3.3-70b-versatile';
+    }
+    if (low.includes('8b') || low.includes('llama-3.1')) {
+      return 'llama-3.1-8b-instant';
+    }
+    if (low.includes('mixtral')) {
+      return 'mixtral-8x7b-32768';
+    }
+  }
+
+  // 5. MISTRAL MAPPING
+  if (provider === 'mistral') {
+    if (low.includes('large')) {
+      return 'mistral-large-latest';
+    }
+    if (low.includes('small')) {
+      return 'mistral-small-latest';
+    }
+    if (low.includes('codestral')) {
+      return 'codestral-latest';
     }
   }
 

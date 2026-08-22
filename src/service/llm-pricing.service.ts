@@ -3,6 +3,7 @@ import path from "path";
 
 export interface LLMPriceItem {
   id: string;
+  canonical_slug?: string;
   vendor: string;
   name: string;
   /** Preço por 1 milhão de tokens de input (USD) */
@@ -18,6 +19,17 @@ export interface LLMPriceItem {
   supported_parameters?: string[];
 }
 
+export interface ProviderModelItem {
+  id: string;
+  canonical_slug?: string;
+  raw_id?: string;
+  name: string;
+  input: number;
+  output: number;
+  input_cached: number | null;
+  supports_temperature: boolean;
+}
+
 export interface LLMPricesCacheData {
   updatedAt: string;
   lastSyncTimestamp: number;
@@ -25,7 +37,7 @@ export interface LLMPricesCacheData {
   totalModels: number;
   /** Lista de vendors únicos presentes no cache — gerada dinamicamente no sync */
   supportedVendors: string[];
-  modelsByProvider: Record<string, Array<{ id: string; name: string; input: number; output: number; input_cached: number | null; supports_temperature: boolean }>>;
+  modelsByProvider: Record<string, ProviderModelItem[]>;
   prices: LLMPriceItem[];
 }
 
@@ -143,6 +155,7 @@ class LLMPricingService {
 
         filteredPrices.push({
           id: model.id,
+          canonical_slug: model.canonical_slug || undefined,
           vendor,
           name: model.name ?? model.id,
           input: inputPerM,
@@ -155,11 +168,14 @@ class LLMPricingService {
       }
 
       // Agrupa por provider para facilitar exibição no frontend
-      const modelsByProvider: Record<string, Array<{ id: string; name: string; input: number; output: number; input_cached: number | null; supports_temperature: boolean }>> = {};
+      const modelsByProvider: Record<string, ProviderModelItem[]> = {};
 
       for (const p of filteredPrices) {
+        const canonicalId = p.canonical_slug || p.id;
         (modelsByProvider[p.vendor] ??= []).push({
-          id: p.id,
+          id: canonicalId,
+          canonical_slug: p.canonical_slug,
+          raw_id: p.id,
           name: p.name,
           input: p.input,
           output: p.output,
@@ -238,13 +254,15 @@ class LLMPricingService {
       return false;
     };
 
-    // 1. Correspondência exata pelo ID completo
-    let found = pricesList.find((p) => p.id.toLowerCase() === normalizedModel);
+    // 1. Correspondência exata pelo ID completo ou canonical_slug
+    let found = pricesList.find((p) => p.id.toLowerCase() === normalizedModel || p.canonical_slug?.toLowerCase() === normalizedModel);
 
-    // 2. Correspondência pelo slug do modelo
+    // 2. Correspondência pelo slug do modelo ou slug do canonical_slug
     if (!found) {
       found = pricesList.find(
-        (p) => isVendorMatch(normalizedVendor, p.vendor) && extractModelSlug(p.id) === normalizedModel
+        (p) =>
+          isVendorMatch(normalizedVendor, p.vendor) &&
+          (extractModelSlug(p.id) === normalizedModel || (p.canonical_slug ? extractModelSlug(p.canonical_slug) === normalizedModel : false))
       );
     }
 
