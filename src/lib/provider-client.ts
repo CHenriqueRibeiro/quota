@@ -71,11 +71,24 @@ export function normalizeModelForProvider(
 
   const low = clean.toLowerCase();
 
-  // 1. ANTHROPIC CLAUDE MAPPING (Garantia de 100% de compatibilidade com a API oficial da Anthropic)
+  // 1. ANTHROPIC CLAUDE MAPPING (Modelos oficiais da Anthropic)
   if (provider === 'anthropic') {
-    const anthropicLow = clean.toLowerCase();
+    const m = clean.split('.').join('-');
+    const anthropicLow = m.toLowerCase();
 
-    // 1. Modelos Claude 3.x explícitos
+    // Modelos oficiais fornecidos pela Anthropic
+    if (anthropicLow === 'claude-opus-5' || anthropicLow.includes('opus-5')) return 'claude-opus-5';
+    if (anthropicLow === 'claude-sonnet-5' || anthropicLow.includes('sonnet-5')) return 'claude-sonnet-5';
+    if (anthropicLow === 'claude-fable-5' || anthropicLow.includes('fable-5')) return 'claude-fable-5';
+    if (anthropicLow === 'claude-opus-4-8' || anthropicLow.includes('opus-4-8') || anthropicLow.includes('opus-4.8')) return 'claude-opus-4-8';
+    if (anthropicLow === 'claude-opus-4-7' || anthropicLow.includes('opus-4-7') || anthropicLow.includes('opus-4.7')) return 'claude-opus-4-7';
+    if (anthropicLow === 'claude-sonnet-4-6' || anthropicLow.includes('sonnet-4-6') || anthropicLow.includes('sonnet-4.6')) return 'claude-sonnet-4-6';
+    if (anthropicLow === 'claude-opus-4-6' || anthropicLow.includes('opus-4-6') || anthropicLow.includes('opus-4.6')) return 'claude-opus-4-6';
+    if (anthropicLow.includes('opus-4-5') || anthropicLow.includes('opus-4.5')) return 'claude-opus-4-5-20251101';
+    if (anthropicLow.includes('haiku-4-5') || anthropicLow.includes('haiku-4.5')) return 'claude-haiku-4-5-20251001';
+    if (anthropicLow.includes('sonnet-4-5') || anthropicLow.includes('sonnet-4.5')) return 'claude-sonnet-4-5-20250929';
+
+    // Modelos Claude 3.x
     if (anthropicLow.includes('3-7-sonnet') || anthropicLow.includes('3.7-sonnet') || anthropicLow.includes('3.7 sonnet')) {
       return 'claude-3-7-sonnet-20250219';
     }
@@ -92,19 +105,13 @@ export function normalizeModelForProvider(
       return 'claude-3-haiku-20240307';
     }
 
-    // 2. Mapeamento de famílias do catálogo (Opus, Sonnet, Haiku, Fable) para endpoints ativos na Anthropic
-    if (anthropicLow.includes('opus')) {
-      return 'claude-3-opus-20240229';
-    }
-    if (anthropicLow.includes('haiku')) {
-      return 'claude-3-5-haiku-20241022';
-    }
-    if (anthropicLow.includes('sonnet') || anthropicLow.includes('claude') || anthropicLow.includes('fable')) {
-      return 'claude-3-5-sonnet-20241022';
-    }
+    // Fallbacks por família
+    if (anthropicLow.includes('opus')) return 'claude-opus-5';
+    if (anthropicLow.includes('haiku')) return 'claude-haiku-4-5-20251001';
+    if (anthropicLow.includes('sonnet')) return 'claude-sonnet-5';
+    if (anthropicLow.includes('fable')) return 'claude-fable-5';
 
-    // Fallback seguro padrão para Anthropic
-    return 'claude-3-5-sonnet-20241022';
+    return m.startsWith('claude-') ? m : `claude-${m}`;
   }
 
   // 2. OPENAI MAPPING
